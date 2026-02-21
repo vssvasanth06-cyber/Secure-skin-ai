@@ -1,0 +1,1 @@
+web: gunicorn secure_skin_ai.wsgi

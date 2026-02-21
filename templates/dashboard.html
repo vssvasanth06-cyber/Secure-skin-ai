@@ -1,0 +1,16 @@
+<h2>Welcome to Dashboard</h2>
+<p>You are logged in.</p>
+
+<a href="/upload/">Upload Medical Image</a>
+
+<br><br>
+<a href="/upload/">Upload Medical Image</a>
+
+<h2>Upload Skin Image</h2>
+
+<form method="POST" enctype="multipart/form-data" action="{% url 'patient_upload' %}">
+    {% csrf_token %}
+    <input type="file" name="image" required>
+    <button type="submit">Upload</button>
+</form>
+
