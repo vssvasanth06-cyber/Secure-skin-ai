@@ -1,5 +1,6 @@
 import torch
 import torchvision.transforms as transforms
+import torchvision.models as models
 from PIL import Image
 import io
 import hashlib
@@ -14,16 +15,28 @@ from cryptography.fernet import Fernet
 from .models import MedicalImage
 
 
-# 🔐 Use constant encryption key from settings.py
+# 🔐 Encryption
 fernet = Fernet(settings.ENCRYPTION_KEY)
 
 
-# 🔬 Load Pretrained ResNet18 Model
-model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet18', pretrained=True)
-model.eval()
+# ==============================
+# 🔬 LAZY LOAD MODEL (IMPORTANT)
+# ==============================
+
+model = None
+
+def get_model():
+    global model
+    if model is None:
+        model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        model.eval()
+    return model
 
 
-# 🔑 LOGIN WITH ROLE SELECTION
+# ==============================
+# 🔑 LOGIN WITH ROLE
+# ==============================
+
 def login_view(request):
     if request.method == "POST":
         selected_role = request.POST.get('role')
@@ -50,7 +63,10 @@ def login_view(request):
     return render(request, 'login.html')
 
 
-# 🏠 ROLE-BASED DASHBOARD
+# ==============================
+# 🏠 ROLE DASHBOARD
+# ==============================
+
 @login_required
 def dashboard(request):
     role = request.user.userprofile.role
@@ -67,7 +83,10 @@ def dashboard(request):
     return redirect('login')
 
 
-# 🧑‍⚕️ PATIENT UPLOAD (ONLY PATIENT CAN ACCESS)
+# ==============================
+# 🧑‍⚕️ PATIENT UPLOAD
+# ==============================
+
 @login_required
 def patient_upload(request):
     if request.user.userprofile.role != 'patient':
@@ -79,13 +98,9 @@ def patient_upload(request):
         if image_file:
             image_bytes = image_file.read()
 
-            # SHA-256 hash
             image_hash = hashlib.sha256(image_bytes).hexdigest()
-
-            # Encrypt image
             encrypted_data = fernet.encrypt(image_bytes)
 
-            # Save to DB
             image_record = MedicalImage.objects.create(
                 user=request.user,
                 encrypted_image=encrypted_data,
@@ -99,7 +114,10 @@ def patient_upload(request):
     return redirect('dashboard')
 
 
-# 🔍 VERIFY + DECRYPT + AI
+# ==============================
+# 🔍 VERIFY + AI
+# ==============================
+
 @login_required
 def verify_and_decrypt(request, image_id):
     try:
@@ -107,25 +125,22 @@ def verify_and_decrypt(request, image_id):
 
         decrypted_data = fernet.decrypt(image_record.encrypted_image)
 
-        # Integrity Check
         new_hash = hashlib.sha256(decrypted_data).hexdigest()
 
         if new_hash != image_record.image_hash:
             return render(request, 'result.html', {
-    'error': "Integrity Failed ❌ Image Tampered"
-})
+                'error': "Integrity Failed ❌ Image Tampered"
+            })
 
-        # AI Prediction
         prediction = run_prediction(decrypted_data)
 
-        # Encrypt prediction
         encrypted_result = fernet.encrypt(prediction.encode())
         image_record.encrypted_prediction = encrypted_result
         image_record.save()
 
         return render(request, 'result.html', {
-    'prediction': prediction
-})
+            'prediction': prediction
+        })
 
     except MedicalImage.DoesNotExist:
         return HttpResponse("Image Not Found")
@@ -134,7 +149,10 @@ def verify_and_decrypt(request, image_id):
         return HttpResponse("Error: " + str(e))
 
 
-# 🤖 AI MODEL PREDICTION
+# ==============================
+# 🤖 AI PREDICTION
+# ==============================
+
 def run_prediction(image_bytes):
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
@@ -145,6 +163,8 @@ def run_prediction(image_bytes):
 
     image_tensor = transform(image).unsqueeze(0)
 
+    model = get_model()
+
     with torch.no_grad():
         outputs = model(image_tensor)
 
@@ -153,7 +173,10 @@ def run_prediction(image_bytes):
     return f"Class Index: {predicted_index}"
 
 
+# ==============================
 # 🚪 LOGOUT
+# ==============================
+
 def logout_view(request):
     logout(request)
     return redirect('login')
