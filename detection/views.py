@@ -1,9 +1,5 @@
-import torch
-import torchvision.transforms as transforms
-import torchvision.models as models
-from PIL import Image
-import io
 import hashlib
+import requests
 
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
@@ -17,20 +13,6 @@ from .models import MedicalImage
 
 # 🔐 Encryption
 fernet = Fernet(settings.ENCRYPTION_KEY)
-
-
-# ==============================
-# 🔬 LAZY LOAD MODEL (IMPORTANT)
-# ==============================
-
-model = None
-
-def get_model():
-    global model
-    if model is None:
-       model = models.resnet18(weights=None)
-        model.eval()
-    return model
 
 
 # ==============================
@@ -115,7 +97,7 @@ def patient_upload(request):
 
 
 # ==============================
-# 🔍 VERIFY + AI
+# 🔍 VERIFY + AI (External Service Ready)
 # ==============================
 
 @login_required
@@ -150,27 +132,12 @@ def verify_and_decrypt(request, image_id):
 
 
 # ==============================
-# 🤖 AI PREDICTION
+# 🤖 AI PREDICTION (DEMO MODE)
 # ==============================
 
 def run_prediction(image_bytes):
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-    ])
-
-    image_tensor = transform(image).unsqueeze(0)
-
-    model = get_model()
-
-    with torch.no_grad():
-        outputs = model(image_tensor)
-
-    predicted_index = torch.argmax(outputs).item()
-
-    return f"Class Index: {predicted_index}"
+    # For now demo mode (stable for free hosting)
+    return "AI Prediction Completed (Demo Mode)"
 
 
 # ==============================
