@@ -1,0 +1,81 @@
+{% extends "_base.html" %}
+{% block title %}Verify Case #{{ image.id }} — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-shield-check"></i> Image Verification · Case #{{ image.id }}</h1>
+    <div class="subtitle">Signature and hash checked against the encrypted original.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px;" class="verify-grid">
+
+  <section class="card-soft" style="padding:20px; text-align:center;">
+    <div style="border:2px dashed var(--border-strong); border-radius:14px; padding:14px; background:rgba(255,255,255,.03);">
+      <img id="verifyImg" src="{% url 'view_decrypted_image' image.id %}?token={{ view_token }}"
+           style="max-width:100%; max-height:380px; border-radius:10px;"
+           alt="Decrypted medical image for case #{{ image.id }}">
+    </div>
+    {# Token is single-use — enlarge the already-loaded image instead of refetching #}
+    <button type="button" id="verifyZoom" class="btn btn-primary" style="margin-top:16px;">
+      <i class="bi bi-zoom-in"></i> Enlarge
+    </button>
+  </section>
+
+  <section class="card-soft" style="padding:20px;">
+    {% if error %}
+      <div class="card-soft" style="border-color:rgba(245,158,11,.4); background:rgba(245,158,11,.06); margin-bottom:16px;">
+        <div style="color:#FCD34D;"><i class="bi bi-exclamation-triangle-fill"></i> <strong>Decryption error:</strong> {{ error }}</div>
+      </div>
+    {% elif is_hash_valid %}
+      <div class="card-soft" style="border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.06); margin-bottom:16px;">
+        <div style="color:#86EFAC; display:flex; align-items:center; gap:8px;"><i class="bi bi-shield-check" style="font-size:20px;"></i> <strong>Verified — integrity intact</strong></div>
+        {% if is_sig_valid %}<div style="margin-top:8px;"><span class="chip chip-info"><i class="bi bi-pen"></i> Digital signature valid</span></div>{% endif %}
+      </div>
+    {% elif not decryption_failed %}
+      <div class="card-soft" style="border-color:rgba(239,68,68,.4); background:rgba(239,68,68,.06); margin-bottom:16px;">
+        <div style="color:#FCA5A5;"><i class="bi bi-x-octagon-fill"></i> <strong>Hash mismatch</strong> — image may be tampered.</div>
+      </div>
+    {% endif %}
+
+    <div class="field">
+      <label>Image Hash (SHA-256)</label>
+      <div class="mono" style="padding:10px 12px; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; font-size:12.5px; word-break:break-all;">{{ image.image_hash }}</div>
+    </div>
+    <div class="field">
+      <label>Image Type</label>
+      <div class="mono" style="padding:10px 12px; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; font-size:12.5px;">{{ image.image_type }}</div>
+    </div>
+  </section>
+</div>
+
+<div id="verifyLb" style="position:fixed; inset:0; z-index:80; display:none; align-items:center; justify-content:center; padding:32px; background:rgba(2,8,23,.88); backdrop-filter:blur(8px); cursor:zoom-out;">
+  <img id="verifyLbImg" src="" alt="Enlarged medical image" style="max-width:94vw; max-height:90vh; border-radius:12px;">
+</div>
+
+<style>@media (max-width:900px){ .verify-grid{grid-template-columns:1fr !important;} }</style>
+
+<script>
+(function(){
+  const img = document.getElementById('verifyImg');
+  const btn = document.getElementById('verifyZoom');
+  const lb = document.getElementById('verifyLb');
+  const lbImg = document.getElementById('verifyLbImg');
+  btn.addEventListener('click', () => {
+    try{
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      lbImg.src = c.toDataURL();
+    }catch(e){ lbImg.src = img.src; }
+    lb.style.display = 'flex';
+  });
+  lb.addEventListener('click', () => lb.style.display = 'none');
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') lb.style.display = 'none'; });
+})();
+</script>
+{% endblock %}

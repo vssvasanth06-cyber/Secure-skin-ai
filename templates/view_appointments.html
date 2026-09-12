@@ -1,0 +1,67 @@
+{% extends "_base.html" %}
+{% block title %}My Appointments — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-calendar-week-fill"></i> {% if role == 'doctor' %}Doctor Appointments{% else %}My Appointments{% endif %}</h1>
+    <div class="subtitle">
+      {% if role == 'doctor' %}Every patient booking assigned to you.{% else %}Your upcoming and past appointments.{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if slots %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px;">
+  {% for s in slots %}
+    {% with is_upcoming=s.date|date:"Y-m-d" %}
+    <article class="card-soft" style="padding:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="stat-icon tone-primary" style="width:38px;height:38px;font-size:14px;">
+            <i class="bi {% if role == 'doctor' %}bi-person-heart{% else %}bi-person-vcard{% endif %}"></i>
+          </div>
+          <div>
+            {% if role == 'doctor' %}
+              <div style="font-weight:700;">{{ s.patient.get_full_name|default:s.patient.username|default:"—" }}</div>
+              <div class="text-muted-c" style="font-size:12px;">@{{ s.patient.username|default:"—" }}</div>
+            {% else %}
+              <div style="font-weight:700;">Dr. {{ s.doctor.get_full_name|default:s.doctor.username }}</div>
+              <div class="text-muted-c" style="font-size:12px;">Attending physician</div>
+            {% endif %}
+          </div>
+        </div>
+        {% if s.date >= today %}
+          <span class="chip chip-success"><i class="bi bi-calendar-check"></i> Upcoming</span>
+        {% else %}
+          <span class="chip chip-muted"><i class="bi bi-calendar-x"></i> Past</span>
+        {% endif %}
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+        <span class="chip chip-info"><i class="bi bi-calendar3"></i> {{ s.date|date:"d M Y" }}</span>
+        <span class="chip chip-muted"><i class="bi bi-clock"></i> {{ s.slot }}</span>
+      </div>
+      {% if role != 'doctor' and s.date >= today %}
+        <a href="{% url 'cancel_booking' s.id %}" class="btn btn-sm btn-danger">
+          <i class="bi bi-x-circle"></i> Cancel
+        </a>
+      {% elif role == 'doctor' and s.date >= today %}
+        <a href="{% url 'update_appointment_status' s.id 'cancelled' %}" class="btn btn-sm btn-danger">
+          <i class="bi bi-x-circle"></i> Cancel
+        </a>
+      {% endif %}
+    </article>
+    {% endwith %}
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-soft" style="text-align:center; padding:44px 20px; color:var(--text-muted);">
+  <i class="bi bi-calendar" style="font-size:44px; opacity:.5;"></i>
+  <p style="margin:12px 0 0;">No appointments yet.</p>
+</div>
+{% endif %}
+{% endblock %}

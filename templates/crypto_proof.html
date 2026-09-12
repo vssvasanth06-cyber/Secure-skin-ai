@@ -1,0 +1,204 @@
+{% extends "_base.html" %}
+{% block title %}{% if proof_title %}{{ proof_title }}{% else %}Crypto Proof{% endif %} — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header" style="justify-content:space-between; flex-wrap:wrap; gap:14px;">
+  <div style="display:flex; align-items:center; gap:14px;">
+    <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+    <div>
+      <h1><i class="bi bi-shield-lock-fill"></i> {% if proof_title %}{{ proof_title }}{% else %}Cryptographic Proof{% endif %}</h1>
+      <div class="subtitle">AES-256 + RSA-2048 · live-generated keys for educational verification</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.cp-code{
+  background:rgba(2,8,23,.55); border:1px solid var(--border); border-radius:12px;
+  box-shadow:inset 0 2px 8px rgba(2,8,23,.5);
+  padding:14px; font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-size:11.5px; line-height:1.5; word-break:break-all; white-space:pre-wrap;
+  max-height:240px; overflow:auto; color:#67E8F9;
+}
+.cp-code.green{color:#86EFAC; border-color:rgba(34,197,94,.3)}
+.cp-code.yellow{color:#FCD34D; border-color:rgba(245,158,11,.3)}
+.cp-code.purple{color:#C4B5FD; border-color:rgba(139,92,246,.3)}
+.cp-code.red{color:#FCA5A5; border-color:rgba(239,68,68,.3)}
+.cp-label{font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--brand-accent); font-weight:700; margin-bottom:8px}
+.cp-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:16px}
+.cp-head{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+.cp-step{display:flex; gap:12px; align-items:flex-start; margin-bottom:14px}
+.cp-stepnum{min-width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:13px;
+  background:linear-gradient(145deg,#22D3EE,#0891B2); color:#001018; box-shadow:0 4px 10px rgba(8,145,178,.4)}
+.cp-table{width:100%; border-collapse:collapse; font-size:13px}
+.cp-table th{background:rgba(8,145,178,.15); padding:10px 14px; text-align:left; font-weight:700; color:#67E8F9; font-size:11px; letter-spacing:.5px; text-transform:uppercase}
+.cp-table td{padding:9px 14px; border-bottom:1px solid var(--border)}
+.cp-table tr:hover td{background:rgba(255,255,255,.03)}
+.cp-time{color:#86EFAC; font-family:'JetBrains Mono',monospace}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="card-soft" style="border-color:rgba(245,158,11,.3); background:rgba(245,158,11,.06); margin-bottom:18px; display:flex; gap:10px; align-items:flex-start;">
+  <i class="bi bi-info-circle-fill" style="color:#FBBF24; font-size:18px; margin-top:2px;"></i>
+  <div style="font-size:13.5px;"><strong>These keys are freshly generated on every page load.</strong>
+    They demonstrate the exact key format used by this system. Each user's actual keys are stored securely (RSA private keys are Fernet-encrypted at rest).</div>
+</div>
+
+<div class="cp-grid">
+
+  <!-- AES -->
+  <section class="card-soft">
+    <div class="cp-head">
+      <div class="stat-icon tone-success"><i class="bi bi-key-fill"></i></div>
+      <div><div style="font-weight:700;">AES-256 Key (AES-GCM)</div><div class="text-muted-c" style="font-size:12px;">Generated in {{ aes_time }} ms</div></div>
+    </div>
+    <div class="cp-label">Raw key — Base64 URL-safe (44 chars = 256 bits)</div>
+    <div class="cp-code green">{{ demo_aes_key }}</div>
+    <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+      <span class="chip chip-success"><i class="bi bi-check-circle-fill"></i> 256-bit key</span>
+      <span class="chip chip-info"><i class="bi bi-clock"></i> {{ aes_time }} ms</span>
+      <span class="chip chip-muted">AES-256-GCM (AEAD)</span>
+    </div>
+  </section>
+
+  <!-- SHA-256 -->
+  <section class="card-soft">
+    <div class="cp-head">
+      <div class="stat-icon tone-primary"><i class="bi bi-fingerprint"></i></div>
+      <div><div style="font-weight:700;">SHA-256 Image Hash</div><div class="text-muted-c" style="font-size:12px;">Hashed in {{ hash_time }} ms</div></div>
+    </div>
+    <div class="cp-label">Hash of demo 4096-byte image block (64 hex chars = 256 bits)</div>
+    <div class="cp-code yellow">{{ sample_hash }}</div>
+    <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+      <span class="chip chip-success"><i class="bi bi-check-circle-fill"></i> Integrity: {{ integrity_ok|yesno:"PASS,FAIL" }}</span>
+      <span class="chip chip-info"><i class="bi bi-clock"></i> {{ hash_time }} ms</span>
+      <span class="chip chip-muted">Tamper-proof</span>
+    </div>
+  </section>
+
+  <!-- RSA public -->
+  <section class="card-soft">
+    <div class="cp-head">
+      <div class="stat-icon tone-info"><i class="bi bi-person-badge-fill"></i></div>
+      <div><div style="font-weight:700;">RSA-2048 Public Key (PEM)</div><div class="text-muted-c" style="font-size:12px;">Generated in {{ rsa_time }} ms</div></div>
+    </div>
+    <div class="cp-label">SubjectPublicKeyInfo — shared with doctor / server</div>
+    <div class="cp-code purple">{{ demo_pub_key }}</div>
+    <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+      <span class="chip chip-success"><i class="bi bi-check-circle-fill"></i> 2048-bit RSA</span>
+      <span class="chip chip-info"><i class="bi bi-clock"></i> {{ rsa_time }} ms</span>
+      <span class="chip chip-muted">OAEP SHA-256</span>
+    </div>
+  </section>
+
+  <!-- RSA private -->
+  <section class="card-soft">
+    <div class="cp-head">
+      <div class="stat-icon tone-danger"><i class="bi bi-lock-fill"></i></div>
+      <div><div style="font-weight:700;">RSA-2048 Private Key (PEM)</div><div class="text-muted-c" style="font-size:12px;">PKCS#8 — stored encrypted per user</div></div>
+    </div>
+    <div class="cp-label">PKCS#8 PEM — never leaves the server</div>
+    <div class="cp-code red">{{ demo_priv_key }}</div>
+    <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+      <span class="chip chip-danger"><i class="bi bi-eye-slash-fill"></i> Server-only</span>
+      <span class="chip chip-muted">PSS signing</span>
+    </div>
+  </section>
+</div>
+
+<!-- HYBRID FLOW -->
+<section class="card-soft" style="margin-top:16px;">
+  <div class="cp-head">
+    <div class="stat-icon tone-warn"><i class="bi bi-diagram-3-fill"></i></div>
+    <div style="font-weight:700;">Full Hybrid Encryption Flow — step by step</div>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px;">
+    <div>
+      <div class="cp-step"><div class="cp-stepnum">1</div><div style="flex:1;">
+        <strong>SHA-256 hash image</strong><div class="cp-label" style="margin-top:6px;">Integrity fingerprint</div>
+        <div class="cp-code yellow" style="font-size:10px;">{{ sample_hash }}</div></div></div>
+      <div class="cp-step"><div class="cp-stepnum">2</div><div style="flex:1;">
+        <strong>AES-256 encrypt image data</strong><div class="cp-label" style="margin-top:6px;">Key (first 44 chars)</div>
+        <div class="cp-code green" style="font-size:10px;">{{ demo_aes_key|slice:":44" }} <span class="text-dim">[AES blob]</span></div>
+        <span class="chip chip-info" style="margin-top:6px;"><i class="bi bi-clock"></i> {{ enc_time }} ms enc · {{ dec_time }} ms dec</span></div></div>
+    </div>
+    <div>
+      <div class="cp-step"><div class="cp-stepnum">3</div><div style="flex:1;">
+        <strong>RSA-2048 OAEP wrap AES key</strong><div class="cp-label" style="margin-top:6px;">RSA-wrapped key (Base64)</div>
+        <div class="cp-code purple" style="font-size:10px;">{{ enc_aes_b64 }}...</div>
+        <span class="chip chip-info" style="margin-top:6px;"><i class="bi bi-clock"></i> {{ rsa_enc_time }} ms enc · {{ rsa_dec_time }} ms dec</span></div></div>
+      <div class="cp-step"><div class="cp-stepnum">4</div><div style="flex:1;">
+        <strong>RSA-PSS SHA-256 signature</strong><div class="cp-label" style="margin-top:6px;">Signed report/image (Base64)</div>
+        <div class="cp-code yellow" style="font-size:10px;">{{ sig_b64 }}...</div>
+        <span class="chip chip-success" style="margin-top:6px;"><i class="bi bi-check-circle-fill"></i> Signature {{ sig_valid|yesno:"VALID,INVALID" }}</span></div></div>
+    </div>
+  </div>
+  <div style="text-align:center; margin-top:12px;">
+    <span class="chip chip-success" style="font-size:12px; padding:6px 14px;"><i class="bi bi-check-circle-fill"></i>
+      Decryption integrity: {{ integrity_ok|yesno:"PASS — data unchanged,FAIL — corruption detected" }}</span>
+  </div>
+</section>
+
+<!-- ADMIN: all user keys -->
+{% if users_keys %}
+<section class="card-soft" style="margin-top:16px; border-color:rgba(34,197,94,.3);">
+  <div class="cp-head">
+    <div class="stat-icon tone-success"><i class="bi bi-people-fill"></i></div>
+    <div><div style="font-weight:700;">All {{ proof_role|title }} RSA Public Keys</div>
+      <div class="text-muted-c" style="font-size:12px;">Stored RSA-2048 keys for every registered {{ proof_role }}</div></div>
+  </div>
+  {% for item in users_keys %}
+  <div style="margin-bottom:16px;">
+    <div class="cp-label">{{ item.username }}{% if item.full_name %} — {{ item.full_name }}{% endif %}</div>
+    {% if item.public_key %}
+      <div class="cp-code green" style="max-height:160px;">{{ item.public_key }}</div>
+    {% else %}
+      <div class="row-item" style="color:var(--text-muted); font-style:italic;">
+        <i class="bi bi-exclamation-circle"></i> No key stored yet for this {{ proof_role }}</div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <p class="text-muted-c" style="text-align:center; padding:20px;">No {{ proof_role }}s registered yet.</p>
+  {% endfor %}
+</section>
+{% elif user_pub_key %}
+<section class="card-soft" style="margin-top:16px; border-color:rgba(34,197,94,.3);">
+  <div class="cp-head">
+    <div class="stat-icon tone-success"><i class="bi bi-person-check-fill"></i></div>
+    <div><div style="font-weight:700;">Your Account's RSA Public Key</div>
+      <div class="text-muted-c" style="font-size:12px;">Stored in database for {{ request.user.username }}</div></div>
+  </div>
+  <div class="cp-label">Used to encrypt AES keys when reports are created for you</div>
+  <div class="cp-code green">{{ user_pub_key }}</div>
+</section>
+{% endif %}
+
+<!-- PERFORMANCE -->
+<section class="card-soft" style="margin-top:16px;">
+  <div class="cp-head">
+    <div class="stat-icon tone-primary"><i class="bi bi-speedometer2"></i></div>
+    <div style="font-weight:700;">Performance Metrics (single run)</div>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="cp-table">
+      <thead><tr><th>Operation</th><th>Algorithm</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td>RSA-2048 Key Generation</td><td>RSA PKCS#8</td><td class="cp-time">{{ rsa_time }} ms</td></tr>
+        <tr><td>AES-256 Key Generation</td><td>os.urandom(32) — 256-bit</td><td class="cp-time">{{ aes_time }} ms</td></tr>
+        <tr><td>SHA-256 Hash (4096 B)</td><td>SHA-256</td><td class="cp-time">{{ hash_time }} ms</td></tr>
+        <tr><td>AES Encrypt (4096 B)</td><td>AES-256-GCM (AEAD)</td><td class="cp-time">{{ enc_time }} ms</td></tr>
+        <tr><td>AES Decrypt (4096 B)</td><td>AES-256-GCM (AEAD)</td><td class="cp-time">{{ dec_time }} ms</td></tr>
+        <tr><td>RSA Encrypt AES Key</td><td>RSA-2048 OAEP SHA-256</td><td class="cp-time">{{ rsa_enc_time }} ms</td></tr>
+        <tr><td>RSA Decrypt AES Key</td><td>RSA-2048 OAEP SHA-256</td><td class="cp-time">{{ rsa_dec_time }} ms</td></tr>
+        <tr><td>RSA-PSS Sign</td><td>PSS SHA-256</td><td class="cp-time">{{ sign_time }} ms</td></tr>
+        <tr><td>RSA-PSS Verify</td><td>PSS SHA-256</td><td class="cp-time">{{ verify_time }} ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

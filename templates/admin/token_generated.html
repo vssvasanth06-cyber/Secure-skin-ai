@@ -1,0 +1,12 @@
+<h2>Decryption Token Generated</h2>
+
+<p><strong>Token:</strong> {{ token }}</p>
+<p>This token is valid for 10 minutes and can be used only once.</p>
+
+<h2>Enter Decryption Token</h2>
+
+<form method="POST">
+    {% csrf_token %}
+    <input type="text" name="token" placeholder="Enter token" required>
+    <button type="submit">Verify</button>
+</form>

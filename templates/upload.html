@@ -1,7 +1,85 @@
-<h2>Upload Medical Image</h2>
+{% extends "_base.html" %}
+{% block title %}Upload Skin Image — Secure Skin AI{% endblock %}
 
-<form method="POST" enctype="multipart/form-data">
-    {% csrf_token %}
-    <input type="file" name="image">
-    <button type="submit">Upload</button>
-</form>
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-cloud-upload-fill"></i> Upload Skin Image</h1>
+    <div class="subtitle">Your image is AES-256 encrypted before it leaves this page. Only your chosen doctor can decrypt it.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:18px;" class="upl-grid">
+
+  <section class="card-soft" style="padding:24px;">
+    <form method="post" enctype="multipart/form-data" id="uploadForm" novalidate>
+      {% csrf_token %}
+
+      <div class="field">
+        <label for="doctor">Select your doctor</label>
+        <select id="doctor" name="doctor" class="input" required>
+          <option value="">Choose a doctor…</option>
+          {% for d in doctors %}
+            <option value="{{ d.user.id }}">Dr. {{ d.user.get_full_name|default:d.user.username }}{% if d.specialization %} — {{ d.specialization }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Skin image (JPG, PNG, WebP · max 10 MB)</label>
+        <label for="image" id="dropzone"
+          style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                 padding:26px 20px; border-radius:14px; border:2px dashed var(--border-strong);
+                 background:rgba(255,255,255,.03); cursor:pointer; transition:.2s;">
+          <i class="bi bi-cloud-arrow-up" style="font-size:36px; color:var(--brand-accent);"></i>
+          <div style="margin-top:8px; font-weight:600;">Click to choose an image</div>
+          <div class="text-muted-c" style="font-size:12px; margin-top:2px;">or drop it here</div>
+          <div id="fileName" class="text-muted-c" style="font-size:12px; margin-top:8px;"></div>
+        </label>
+        <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+               required style="display:none;" onchange="document.getElementById('fileName').textContent=this.files[0]?.name || ''">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">
+        <i class="bi bi-shield-lock-fill"></i> Encrypt &amp; Upload
+      </button>
+    </form>
+  </section>
+
+  <aside class="card-soft" style="padding:20px;">
+    <h2 style="margin:0 0 12px; font-size:15px; font-weight:700;">
+      <i class="bi bi-shield-lock text-muted-c"></i> How your image is protected
+    </h2>
+    <ol style="padding-left:18px; margin:0; color:var(--text-muted); font-size:14px; line-height:1.65;">
+      <li><strong style="color:var(--text);">Hashed</strong> with SHA-256 — proves it wasn't tampered with.</li>
+      <li><strong style="color:var(--text);">AES-256</strong> encrypted with a fresh session key.</li>
+      <li><strong style="color:var(--text);">RSA-2048</strong> wraps the AES key for your doctor <em>and</em> for you.</li>
+      <li><strong style="color:var(--text);">PSS signature</strong> — your identity is cryptographically bound to the file.</li>
+      <li><strong style="color:var(--text);">Server never sees plaintext</strong> after upload.</li>
+    </ol>
+    <div class="divider"></div>
+    <div style="font-size:12px; color:var(--text-dim);">
+      Uploads are rate-limited and scanned for magic-byte spoofing.
+      A PHP shell renamed to <code class="mono">.jpg</code> won't get past the server check.
+    </div>
+  </aside>
+
+</div>
+
+<style>
+@media (max-width:900px){ .upl-grid{grid-template-columns:1fr !important;} }
+</style>
+
+<script>
+const dz = document.getElementById('dropzone');
+const input = document.getElementById('image');
+['dragover','dragenter'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.style.background='rgba(34,211,238,.06)'; dz.style.borderColor='var(--brand-accent)'; }));
+['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.style.background='rgba(255,255,255,.03)'; dz.style.borderColor='var(--border-strong)'; }));
+dz.addEventListener('drop', ev => {
+  if(ev.dataTransfer.files.length){ input.files = ev.dataTransfer.files; document.getElementById('fileName').textContent = input.files[0].name; }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "_base.html" %}
+{% block title %}Doctors — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-person-badge-fill"></i> Doctors</h1>
+    <div class="subtitle">{{ doctors|length }} registered doctors.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="card-soft" style="margin-bottom:16px;">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <i class="bi bi-search text-muted-c"></i>
+    <input id="searchInput" class="input" placeholder="Search doctors by name or email…"
+           style="background:transparent; border:none; padding:10px 4px;">
+  </div>
+</section>
+
+<section class="card-soft" style="padding:0; overflow:hidden;">
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:14px;" id="tableData">
+      <thead>
+        <tr style="text-align:left; color:var(--text-muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;">
+          <th style="padding:12px 18px;">Doctor</th>
+          <th style="padding:12px 18px;">Email</th>
+          <th style="padding:12px 18px;">Specialization</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in doctors %}
+        <tr style="border-top:1px solid var(--border);">
+          <td style="padding:12px 18px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="stat-icon tone-primary" style="width:32px;height:32px;font-size:13px;"><i class="bi bi-person-badge"></i></div>
+              <span style="font-weight:600;">Dr. {{ d.user.get_full_name|default:d.user.username }}</span>
+            </div>
+          </td>
+          <td style="padding:12px 18px; color:var(--text-muted);">{{ d.user.email }}</td>
+          <td style="padding:12px 18px;">{{ d.specialization|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" style="padding:24px; text-align:center; color:var(--text-muted);">No doctors registered yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+document.getElementById("searchInput").addEventListener("input", function(){
+  const v = this.value.toLowerCase();
+  document.querySelectorAll("#tableData tbody tr").forEach(r => r.style.display = r.innerText.toLowerCase().includes(v) ? "" : "none");
+});
+</script>
+{% endblock %}

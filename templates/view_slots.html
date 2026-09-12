@@ -1,0 +1,54 @@
+{% extends "_base.html" %}
+{% block title %}Book Appointment — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-calendar-plus-fill"></i> Available Slots</h1>
+    <div class="subtitle">
+      {% if report_context %}
+        For report RPT-{{ report_context.report_id|stringformat:"05d" }} — showing only Dr. {{ report_context.doctor_name }}.
+      {% else %}
+        Pick a time that works for you.
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if slots %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;">
+  {% for s in slots %}
+  <article class="card-soft" style="padding:18px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+      <div class="stat-icon tone-primary" style="width:38px;height:38px;font-size:14px;">
+        <i class="bi bi-person-vcard"></i>
+      </div>
+      <div>
+        <div style="font-weight:700;">Dr. {{ s.doctor.get_full_name|default:s.doctor.username }}</div>
+        <div class="text-muted-c" style="font-size:12px;">
+          {% if s.doctor.userprofile.specialization %}{{ s.doctor.userprofile.specialization }}{% endif %}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+      <span class="chip chip-info"><i class="bi bi-calendar3"></i> {{ s.date|date:"d M Y" }}</span>
+      <span class="chip chip-muted"><i class="bi bi-clock"></i> {{ s.slot }}</span>
+    </div>
+    <a href="{% url 'book_slot' s.id %}" class="btn btn-sm btn-primary btn-block">
+      <i class="bi bi-check2"></i> Book this slot
+    </a>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-soft" style="text-align:center; padding:44px 20px; color:var(--text-muted);">
+  <i class="bi bi-calendar-x" style="font-size:44px; opacity:.5;"></i>
+  <p style="margin:12px 0 0;">No available slots right now. Please check back later.</p>
+</div>
+{% endif %}
+
+{% endblock %}

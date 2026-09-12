@@ -1,0 +1,118 @@
+{% comment %}
+Shared OTP verification card body.
+Context expected:
+  otp_title        — heading  ("Verify your email", "Verify sign-in", ...)
+  otp_subtitle     — sub-text
+  otp_back_url     — where the ← link goes (name resolved by caller)
+  remaining        — seconds left before OTP expires
+  expired          — boolean, true when server determined OTP has expired
+{% endcomment %}
+<a href="{{ otp_back_url }}" class="back-link"><i class="bi bi-arrow-left"></i> Back</a>
+
+<div class="auth-brand">
+  <span class="logo" aria-hidden="true"><i class="bi bi-envelope-check-fill"></i></span>
+  <span>
+    <div class="name">Secure Skin&nbsp;AI</div>
+    <div class="tagline">Hospital Portal</div>
+  </span>
+</div>
+<h1 id="auth-title" class="auth-title">{{ otp_title }}</h1>
+<p class="auth-subtitle">{{ otp_subtitle }}</p>
+
+{% if messages %}
+  {% for m in messages %}
+    <div class="alert alert-{% if 'error' in m.tags %}error{% elif 'success' in m.tags %}success{% elif 'warning' in m.tags %}warning{% else %}info{% endif %}">
+      <i class="bi
+        {% if 'error' in m.tags %}bi-exclamation-octagon-fill
+        {% elif 'success' in m.tags %}bi-check-circle-fill
+        {% elif 'warning' in m.tags %}bi-exclamation-triangle-fill
+        {% else %}bi-info-circle-fill{% endif %}"></i>
+      <span>{{ m }}</span>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<form method="post" id="otpForm" novalidate>
+  {% csrf_token %}
+
+  <div class="field">
+    <label>Enter the 6-digit code</label>
+    <div class="otp-grid" id="otpGrid">
+      <input class="otp-cell" inputmode="numeric" maxlength="1" autocomplete="one-time-code" pattern="[0-9]" aria-label="Digit 1" autofocus>
+      <input class="otp-cell" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 2">
+      <input class="otp-cell" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 3">
+      <input class="otp-cell" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 4">
+      <input class="otp-cell" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 5">
+      <input class="otp-cell" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 6">
+    </div>
+    <input type="hidden" name="otp" id="otpValue">
+  </div>
+
+  <div class="countdown">
+    <span><i class="bi bi-clock-history"></i> Code expires in <span class="time" id="cdText">{% if expired %}0:00{% else %}--:--{% endif %}</span></span>
+    <button type="submit" name="resend" value="1" class="resend-btn" id="resendBtn" disabled>
+      <i class="bi bi-arrow-clockwise"></i> Resend
+    </button>
+  </div>
+
+  <button type="submit" class="btn btn-primary" style="margin-top:6px">
+    Verify <i class="bi bi-arrow-right"></i>
+  </button>
+</form>
+
+<div class="auth-links">
+  Didn't get the email? Check your spam folder, then use <strong>Resend</strong>.
+</div>
+
+<script>
+(function(){
+  const cells = document.querySelectorAll('.otp-cell');
+  const hidden = document.getElementById('otpValue');
+  const form = document.getElementById('otpForm');
+
+  // Concatenate cells into the hidden field on submit
+  form.addEventListener('submit', () => {
+    hidden.value = Array.from(cells).map(c => c.value).join('');
+  });
+
+  cells.forEach((cell, i) => {
+    cell.addEventListener('input', e => {
+      cell.value = cell.value.replace(/[^0-9]/g,'').slice(0,1);
+      cell.classList.toggle('filled', !!cell.value);
+      if(cell.value && i < cells.length - 1) cells[i+1].focus();
+    });
+    cell.addEventListener('keydown', e => {
+      if(e.key === 'Backspace' && !cell.value && i > 0) cells[i-1].focus();
+      if(e.key === 'ArrowLeft' && i > 0) cells[i-1].focus();
+      if(e.key === 'ArrowRight' && i < cells.length-1) cells[i+1].focus();
+    });
+    cell.addEventListener('paste', e => {
+      const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      if(!paste) return;
+      e.preventDefault();
+      for(let j = 0; j < paste.length && j < cells.length; j++){ cells[j].value = paste[j]; cells[j].classList.add('filled'); }
+      const nextEmpty = Array.from(cells).findIndex(c => !c.value);
+      (nextEmpty === -1 ? cells[cells.length-1] : cells[nextEmpty]).focus();
+    });
+  });
+
+  // Countdown timer
+  let remaining = parseInt("{{ remaining|default:'0' }}", 10) || 0;
+  const cdEl = document.getElementById('cdText');
+  const resendBtn = document.getElementById('resendBtn');
+
+  function fmt(s){ const m = Math.floor(s/60); const r = s % 60; return m + ':' + (r < 10 ? '0' + r : r); }
+  function tick(){
+    if(remaining <= 0){
+      cdEl.textContent = '0:00';
+      cdEl.style.color = 'var(--brand-danger)';
+      resendBtn.disabled = false;
+      return;
+    }
+    cdEl.textContent = fmt(remaining);
+    remaining -= 1;
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>

@@ -1,0 +1,70 @@
+{% extends "_base.html" %}
+{% block title %}Add Availability — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-calendar-plus-fill"></i> Manage Availability</h1>
+    <div class="subtitle">Add the slots when patients can book appointments with you.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:18px;" class="av-grid">
+
+  <section class="card-soft" style="padding:22px;">
+    <h2 style="margin:0 0 12px; font-size:15px; font-weight:700;"><i class="bi bi-plus-circle"></i> Add a new slot</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="date">Date</label>
+        <input id="date" name="date" type="date" class="input" required>
+      </div>
+      <div class="field">
+        <label for="slot">Time slot</label>
+        <select id="slot" name="slot" class="input" required>
+          <option value="">Choose a slot…</option>
+          <option value="9AM-10AM">09:00 – 10:00 AM</option>
+          <option value="10AM-11AM">10:00 – 11:00 AM</option>
+          <option value="11AM-12PM">11:00 AM – 12:00 PM</option>
+          <option value="2PM-3PM">02:00 – 03:00 PM</option>
+          <option value="3PM-4PM">03:00 – 04:00 PM</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block"><i class="bi bi-plus-lg"></i> Add slot</button>
+    </form>
+  </section>
+
+  <section class="card-soft" style="padding:22px;">
+    <h2 style="margin:0 0 12px; font-size:15px; font-weight:700;"><i class="bi bi-calendar-week"></i> Your slots</h2>
+    {% if my_slots %}
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px;">
+        {% for s in my_slots %}
+        <div style="padding:12px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:10px;">
+          <div style="font-weight:600;">{{ s.date|date:"d M Y" }}</div>
+          <div class="text-muted-c" style="font-size:12px; margin-top:2px;"><i class="bi bi-clock"></i> {{ s.slot }}</div>
+          <div style="margin-top:8px;">
+            {% if s.is_booked %}
+              <span class="chip chip-warn"><i class="bi bi-person-check"></i> Booked</span>
+            {% else %}
+              <span class="chip chip-success"><i class="bi bi-check-circle"></i> Open</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:22px; color:var(--text-muted);">
+        <i class="bi bi-calendar" style="font-size:32px; opacity:.5;"></i>
+        <p style="margin:12px 0 0;">No slots added yet.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<style>
+@media (max-width:900px){ .av-grid{grid-template-columns:1fr !important;} }
+</style>
+{% endblock %}

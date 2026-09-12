@@ -1,0 +1,80 @@
+{% extends "_base.html" %}
+{% block title %}Payment · Report {{ report.id }} — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-credit-card-2-front-fill"></i> Unlock Report RPT-{{ report.id|stringformat:"05d" }}</h1>
+    <div class="subtitle">One-time consultation fee of <strong>&#8377;350</strong>. Payment verified server-side.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;">
+
+  <!-- Card / Netbanking -->
+  <section class="card-soft" style="padding:22px;">
+    <h2 style="margin:0 0 6px; font-size:16px; font-weight:700;"><i class="bi bi-credit-card"></i> Pay with card / netbanking</h2>
+    <p class="text-muted-c" style="margin:0 0 14px; font-size:13.5px;">Powered by Razorpay. Report unlocks instantly.</p>
+    <form method="post" id="rzpForm">
+      {% csrf_token %}
+      <input type="hidden" name="razorpay_payment_id" id="rzp_pay_id">
+      <input type="hidden" name="razorpay_order_id" id="rzp_order_id" value="{{ order_id }}">
+      <input type="hidden" name="razorpay_signature" id="rzp_sig">
+      <button type="button" class="btn btn-primary btn-block" onclick="openRzp()">
+        <i class="bi bi-shield-lock-fill"></i> Pay &#8377;350 securely
+      </button>
+    </form>
+  </section>
+
+  <!-- UPI QR -->
+  <section class="card-soft" style="padding:22px; text-align:center;">
+    <h2 style="margin:0 0 6px; font-size:16px; font-weight:700;"><i class="bi bi-qr-code"></i> Pay via UPI</h2>
+    <p class="text-muted-c" style="margin:0 0 14px; font-size:13.5px;">Scan &amp; pay, then enter your 12-digit UPI reference. Verified <strong>instantly</strong> by the server.</p>
+    <div style="background:#ffffff; border-radius:14px; padding:14px; display:inline-block;">
+      <img src="data:image/png;base64,{{ qr_b64 }}" alt="UPI QR code" style="width:180px; height:180px; display:block;">
+    </div>
+    <form method="post" style="margin-top:14px; text-align:left;">
+      {% csrf_token %}
+      <input type="hidden" name="pay_method" value="upi">
+      <div class="field">
+        <label for="utr">UTR / Transaction Reference (12 digits)</label>
+        <input id="utr" name="utr_number" class="input mono" required inputmode="numeric"
+               pattern="\d{12}" maxlength="12" placeholder="e.g. 423487612095">
+      </div>
+      <button class="btn btn-primary btn-block"><i class="bi bi-patch-check"></i> Verify &amp; unlock report</button>
+      <div style="font-size:11.5px; color:var(--text-dim); margin-top:10px; display:flex; gap:7px; align-items:flex-start;">
+        <i class="bi bi-shield-exclamation" style="margin-top:1px; color:#FCD34D;"></i>
+        <span>Fake or unsettled UPI references are automatically rejected — the report unlocks only after the backend confirms a genuine ₹350 settlement.</span>
+      </div>
+    </form>
+  </section>
+
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+function openRzp(){
+  const rzp = new Razorpay({
+    key: "{{ razorpay_key }}",
+    amount: {{ amount }},
+    currency: "INR",
+    order_id: "{{ order_id }}",
+    name: "Secure Skin AI",
+    description: "Report RPT-{{ report.id|stringformat:'05d' }}",
+    prefill: { name: "{{ patient_name|escapejs }}", email: "{{ patient_email|escapejs }}" },
+    theme: { color: "#0891B2" },
+    handler: function(resp){
+      document.getElementById('rzp_pay_id').value  = resp.razorpay_payment_id;
+      document.getElementById('rzp_order_id').value = resp.razorpay_order_id;
+      document.getElementById('rzp_sig').value      = resp.razorpay_signature;
+      document.getElementById('rzpForm').submit();
+    }
+  });
+  rzp.open();
+}
+</script>
+{% endblock %}

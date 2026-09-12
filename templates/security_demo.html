@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Security Threat Analysis — Secure Skin AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0d1117, #161b22, #0d1117);
+            min-height: 100vh; color: white;
+        }
+        .topbar {
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(16px);
+            padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .attack-card {
+            background: rgba(255,255,255,0.04); backdrop-filter: blur(12px);
+            border-radius: 20px; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: 0.3s; margin-bottom: 20px;
+        }
+        .attack-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.18); }
+        .attack-header {
+            padding: 18px 22px; display: flex; align-items: center; gap: 14px;
+        }
+        .attack-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; flex-shrink: 0;
+        }
+        .attack-body { padding: 0 22px 20px; }
+        .col-label {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+            font-weight: 700; margin-bottom: 8px;
+        }
+        .before-box {
+            background: rgba(239,68,68,0.1); border-radius: 12px; padding: 14px;
+            border-left: 3px solid #ef4444; font-size: 13px; color: #fca5a5;
+        }
+        .after-box {
+            background: rgba(16,185,129,0.1); border-radius: 12px; padding: 14px;
+            border-left: 3px solid #10b981; font-size: 13px; color: #6ee7b7;
+        }
+        .mechanism-box {
+            background: rgba(59,130,246,0.1); border-radius: 12px; padding: 14px;
+            border-left: 3px solid #3b82f6; font-size: 13px; color: #93c5fd;
+        }
+        .badge-protected {
+            background: linear-gradient(135deg,#10b981,#059669);
+            border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600;
+            box-shadow: 0 0 10px rgba(16,185,129,0.4);
+        }
+        .divider { height: 1px; background: rgba(255,255,255,0.08); margin: 14px 0; }
+        .summary-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
+            margin-bottom: 28px;
+        }
+        .summary-item {
+            background: rgba(255,255,255,0.06); border-radius: 14px; padding: 14px;
+            text-align: center;
+        }
+        .summary-item .num { font-size: 28px; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div>
+        <h5 class="mb-0"><i class="bi bi-shield-fill-check" style="color:#10b981;"></i>
+            &nbsp; Security Threat Analysis & Protection</h5>
+        <small style="color:#aaa;">Before &amp; After defence for every major web attack vector</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'crypto_proof' %}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-key-fill"></i> Crypto Proof
+        </a>
+        <a href="{% url 'dashboard' %}" class="btn btn-light btn-sm">
+            <i class="bi bi-arrow-left"></i> Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="container py-4">
+
+    <!-- Summary -->
+    <div class="summary-grid">
+        <div class="summary-item">
+            <div class="num" style="color:#10b981;">{{ attacks|length }}</div>
+            <div style="font-size:13px; color:#aaa;">Attacks Covered</div>
+        </div>
+        <div class="summary-item">
+            <div class="num" style="color:#10b981;">{{ attacks|length }}</div>
+            <div style="font-size:13px; color:#aaa;">All Protected</div>
+        </div>
+        <div class="summary-item">
+            <div class="num" style="color:#3b82f6;">AES+RSA</div>
+            <div style="font-size:13px; color:#aaa;">Hybrid Encryption</div>
+        </div>
+        <div class="summary-item">
+            <div class="num" style="color:#8b5cf6;">2FA</div>
+            <div style="font-size:13px; color:#aaa;">OTP Login</div>
+        </div>
+        <div class="summary-item">
+            <div class="num" style="color:#f59e0b;">SHA-256</div>
+            <div style="font-size:13px; color:#aaa;">Integrity Check</div>
+        </div>
+        <div class="summary-item">
+            <div class="num" style="color:#ec4899;">PSS</div>
+            <div style="font-size:13px; color:#aaa;">Digital Signatures</div>
+        </div>
+    </div>
+
+    {% for atk in attacks %}
+    <div class="attack-card">
+        <div class="attack-header" style="background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1));">
+            <div class="attack-icon" style="background: color-mix(in srgb, {{ atk.color }} 20%, transparent);">
+                <i class="bi {{ atk.icon }}" style="color: {{ atk.color }};"></i>
+            </div>
+            <div style="flex:1;">
+                <h6 class="mb-0">{{ atk.id }}. {{ atk.name }}</h6>
+            </div>
+            <span class="badge-protected"><i class="bi bi-shield-check"></i> {{ atk.status }}</span>
+        </div>
+        <div class="attack-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="col-label" style="color:#f87171;"><i class="bi bi-x-octagon-fill"></i> Before Protection</div>
+                    <div class="before-box">{{ atk.before }}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="col-label" style="color:#60a5fa;"><i class="bi bi-gear-fill"></i> How We Protect</div>
+                    <div class="mechanism-box">{{ atk.mechanism }}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="col-label" style="color:#34d399;"><i class="bi bi-check-circle-fill"></i> After Protection</div>
+                    <div class="after-box">{{ atk.after }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+</body>
+</html>

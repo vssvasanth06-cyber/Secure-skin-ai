@@ -1,0 +1,99 @@
+{% extends "_auth_base.html" %}
+{% block title %}Create account — Secure Skin AI{% endblock %}
+
+{% block card_body %}
+  <a href="{% url 'login' %}" class="back-link"><i class="bi bi-arrow-left"></i> Back to sign in</a>
+  <div class="auth-brand">
+    <span class="logo" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></span>
+    <span class="name">Secure Skin&nbsp;AI</span>
+  </div>
+  <h1 id="auth-title" class="auth-title">Create your account</h1>
+  <p class="auth-subtitle">Register as a patient or doctor. We'll email an OTP to confirm.</p>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{% if 'error' in m.tags %}error{% elif 'success' in m.tags %}success{% elif 'warning' in m.tags %}warning{% else %}info{% endif %}">
+        <i class="bi
+          {% if 'error' in m.tags %}bi-exclamation-octagon-fill
+          {% elif 'success' in m.tags %}bi-check-circle-fill
+          {% elif 'warning' in m.tags %}bi-exclamation-triangle-fill
+          {% else %}bi-info-circle-fill{% endif %}"></i>
+        <span>{{ m }}</span>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" class="input"
+             placeholder="Pick a unique username" autocomplete="username" required>
+    </div>
+
+    <div class="field">
+      <label for="email">Email address</label>
+      <input id="email" name="email" type="email" class="input"
+             placeholder="you@example.com" autocomplete="email" required>
+    </div>
+
+    <div class="field">
+      <label for="role">I am registering as</label>
+      <select id="role" name="role" class="input" onchange="toggleDocCode(this.value)">
+        <option value="patient">Patient</option>
+        <option value="doctor">Doctor</option>
+      </select>
+    </div>
+
+    <div class="field" id="doctor-code-field" style="display:none">
+      <label for="doctor_code">Doctor registration code</label>
+      <input id="doctor_code" name="doctor_code" type="text" class="input"
+             placeholder="Provided by your hospital">
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <div class="password-box">
+        <input id="password" name="password" type="password" class="input"
+               placeholder="At least 8 characters" autocomplete="new-password" required>
+        <button type="button" class="eye" aria-label="Show password" onclick="togglePwd('password',this)">
+          <i class="bi bi-eye"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="confirm">Confirm password</label>
+      <div class="password-box">
+        <input id="confirm" name="confirm" type="password" class="input"
+               placeholder="Repeat your password" autocomplete="new-password" required>
+        <button type="button" class="eye" aria-label="Show password" onclick="togglePwd('confirm',this)">
+          <i class="bi bi-eye"></i>
+        </button>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:6px">
+      Create account <i class="bi bi-arrow-right"></i>
+    </button>
+  </form>
+
+  <div class="auth-links">
+    Already have an account? <a href="{% url 'login' %}">Sign in</a>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePwd(id, btn){
+  const f = document.getElementById(id);
+  const i = btn.querySelector('i');
+  if(f.type === 'password'){ f.type = 'text'; i.classList.replace('bi-eye','bi-eye-slash'); btn.setAttribute('aria-label','Hide password'); }
+  else { f.type = 'password'; i.classList.replace('bi-eye-slash','bi-eye'); btn.setAttribute('aria-label','Show password'); }
+}
+function toggleDocCode(v){
+  document.getElementById('doctor-code-field').style.display = (v === 'doctor') ? '' : 'none';
+}
+</script>
+{% endblock %}

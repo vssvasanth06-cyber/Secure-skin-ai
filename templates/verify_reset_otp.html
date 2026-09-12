@@ -1,0 +1,9 @@
+{% extends "_auth_base.html" %}
+{% block title %}Verify reset code — Secure Skin AI{% endblock %}
+
+{% block card_body %}
+  {% url 'forgot_password' as otp_back_url %}
+  {% with otp_title="Verify reset code" otp_subtitle="Enter the 6-digit code we sent to your email to continue resetting your password." %}
+    {% include "_otp_verify_partial.html" %}
+  {% endwith %}
+{% endblock %}

@@ -1,0 +1,248 @@
+{% extends "_base.html" %}
+{% block title %}Report RPT-{{ report.id|stringformat:"05d" }} — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header" style="justify-content:space-between; flex-wrap:wrap; gap:14px;">
+  <div style="display:flex; align-items:center; gap:14px;">
+    <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+    <div>
+      <h1><i class="bi bi-file-earmark-medical-fill"></i> Medical Report</h1>
+      <div class="subtitle">
+        <i class="bi bi-hash"></i> RPT-{{ report.id|stringformat:"05d" }} ·
+        <i class="bi bi-calendar3"></i> {{ report.created_at|date:"d M Y, h:i A" }}
+      </div>
+    </div>
+  </div>
+  {% if not error %}
+    <a href="{% url 'download_report' report.id %}" class="btn btn-primary">
+      <i class="bi bi-download"></i> Download PDF
+    </a>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+  <div class="card-soft" style="border-color:rgba(239,68,68,.4);">
+    <div style="display:flex; align-items:center; gap:10px; color:#FCA5A5;">
+      <i class="bi bi-exclamation-octagon-fill" style="font-size:22px;"></i>
+      <div><strong>Unable to decrypt this report.</strong><br><small>{{ error }}</small></div>
+    </div>
+  </div>
+{% else %}
+
+  {# ── Integrity banner ─────────────────────────────────────── #}
+  {% if is_tampered %}
+    <div class="card-soft" style="border-color:rgba(239,68,68,.4); margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:10px; color:#FCA5A5;">
+        <i class="bi bi-exclamation-triangle-fill" style="font-size:22px;"></i>
+        <div><strong>Integrity check FAILED.</strong> The report content does not match its recorded SHA-256 hash — it may have been tampered with. Contact your hospital admin.</div>
+      </div>
+    </div>
+  {% else %}
+    <div class="card-soft" style="border-color:rgba(34,197,94,.3); background:rgba(34,197,94,.05); margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:10px; color:#86EFAC;">
+        <i class="bi bi-patch-check-fill" style="font-size:20px;"></i>
+        <div>Digitally signed by the attending doctor · SHA-256 integrity verified · AES-256 + RSA-2048 decrypted for your account only.</div>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ══════════════ OFFICIAL HOSPITAL REPORT SHEET ══════════════ #}
+  <article class="report-sheet">
+
+    <!-- Letterhead -->
+    <header class="rs-head">
+      <div class="rs-brandwrap">
+        <div class="rs-logo"><i class="bi bi-heart-pulse-fill"></i></div>
+        <div>
+          <div class="rs-hosp">Secure Skin&nbsp;AI</div>
+          <div class="rs-hosp-sub">Department of Dermatology · Teledermatology Unit</div>
+          <div class="rs-hosp-meta">Encrypted Medical Records System · AES-256 / RSA-2048</div>
+        </div>
+      </div>
+      <div class="rs-idblock">
+        <div class="rs-idrow"><span>Report No.</span><strong>RPT-{{ report.id|stringformat:"05d" }}</strong></div>
+        <div class="rs-idrow"><span>Issued</span><strong>{{ report_lines.DATE }}</strong></div>
+        <div class="rs-idrow">
+          <span>Severity</span>
+          <strong>
+            <span class="chip {% if report.severity == 'severe' %}chip-danger{% else %}chip-info{% endif %}" style="text-transform:capitalize;">
+              {{ report_lines.SEVERITY|default:report.severity }}
+            </span>
+          </strong>
+        </div>
+      </div>
+    </header>
+
+    <div class="rs-title-band">
+      <i class="bi bi-file-medical"></i> CONFIDENTIAL DERMATOLOGY REPORT
+    </div>
+
+    <!-- Patient + Doctor particulars -->
+    <div class="rs-section">
+      <div class="rs-sec-label">Patient &amp; Encounter Details</div>
+      <div class="rs-grid">
+        <div class="rs-cell"><span>Patient Name</span><strong>{{ report_lines.PATIENT_NAME }}</strong></div>
+        <div class="rs-cell"><span>Username / MRN</span><strong>{{ report_lines.USERNAME }}</strong></div>
+        <div class="rs-cell"><span>Email</span><strong>{{ report_lines.EMAIL }}</strong></div>
+        <div class="rs-cell"><span>Attending Doctor</span><strong>{{ report_lines.DOCTOR }}</strong></div>
+        <div class="rs-cell"><span>Report Date</span><strong>{{ report_lines.DATE }}</strong></div>
+        <div class="rs-cell"><span>Case Reference</span><strong>Case #{{ report.image.id }}</strong></div>
+      </div>
+    </div>
+
+    <!-- Diagnosis -->
+    <div class="rs-section">
+      <div class="rs-sec-label">Clinical Diagnosis</div>
+      <div class="rs-diagnosis">
+        <div class="rs-dx-name">{{ report_lines.DIAGNOSIS|default:"—" }}</div>
+        <span class="chip {% if report.severity == 'severe' %}chip-danger{% else %}chip-success{% endif %}" style="text-transform:capitalize;">
+          <i class="bi bi-activity"></i> {{ report_lines.SEVERITY|default:report.severity }} severity
+        </span>
+      </div>
+    </div>
+
+    <!-- Prescription -->
+    <div class="rs-section">
+      <div class="rs-sec-label"><i class="bi bi-capsule"></i> Prescription &amp; Treatment Plan</div>
+      <div class="rs-rx">
+        <div class="rs-rx-mark">℞</div>
+        <div class="rs-rx-body">{{ report_lines.PRESCRIPTION|default:"No prescription provided." }}</div>
+      </div>
+    </div>
+
+    <!-- Remarks -->
+    {% if report_lines.REMARKS %}
+    <div class="rs-section">
+      <div class="rs-sec-label">Doctor's Remarks / Advice</div>
+      <div class="rs-remarks">{{ report_lines.REMARKS }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Signature strip -->
+    <div class="rs-signrow">
+      <div class="rs-sign">
+        <div class="rs-sign-line">{{ report_lines.DOCTOR|default:"Attending Physician" }}</div>
+        <div class="rs-sign-cap">Attending Dermatologist · Digitally signed (RSA-2048)</div>
+      </div>
+      <div class="rs-stamp">
+        <i class="bi bi-patch-check-fill"></i>
+        <div>
+          <div class="rs-stamp-t">VERIFIED</div>
+          <div class="rs-stamp-s">Integrity {% if is_tampered %}FAILED{% else %}intact{% endif %}</div>
+        </div>
+      </div>
+    </div>
+
+    {% if report.is_paid %}
+    <div class="rs-payment">
+      <i class="bi bi-receipt"></i>
+      <span>Payment received · Txn <span class="mono">{{ report.transaction_id }}</span> · {{ report.payment_time|date:"d M Y, h:i A" }}</span>
+      <span class="chip chip-success" style="margin-left:auto;">PAID ₹350</span>
+    </div>
+    {% endif %}
+
+    <!-- Security footer -->
+    <footer class="rs-foot">
+      <i class="bi bi-shield-lock-fill"></i>
+      This report is cryptographically signed and encrypted using AES-256 + RSA-2048 hybrid encryption.
+      Any tampering invalidates the SHA-256 integrity hash. This is a computer-generated confidential medical document.
+    </footer>
+  </article>
+
+{% endif %}
+
+<style>
+.report-sheet{
+  max-width:860px; margin:0 auto;
+  background:linear-gradient(180deg, rgba(20,32,60,.55), rgba(10,17,34,.7));
+  border:1px solid var(--border-strong);
+  border-radius:18px; overflow:hidden;
+  box-shadow:var(--inset-hi), var(--elev-3);
+}
+.rs-head{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap;
+  padding:22px 26px 18px;
+  background:linear-gradient(120deg, rgba(8,145,178,.18), rgba(34,211,238,.05));
+  border-bottom:2px solid rgba(34,211,238,.35);
+}
+.rs-brandwrap{display:flex; align-items:center; gap:14px}
+.rs-logo{
+  width:52px; height:52px; border-radius:14px; flex-shrink:0;
+  background:linear-gradient(145deg,#22D3EE,#0891B2 55%,#0E7490);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5), inset 0 -3px 6px rgba(0,20,30,.45), 0 10px 22px rgba(8,145,178,.5);
+  display:grid; place-items:center; color:#001018; font-size:24px;
+}
+.rs-hosp{font-family:'Sora',sans-serif; font-weight:800; font-size:22px; letter-spacing:.2px}
+.rs-hosp-sub{font-size:13px; color:var(--text); font-weight:600; margin-top:1px}
+.rs-hosp-meta{font-size:11px; color:var(--text-muted); letter-spacing:.4px; margin-top:2px}
+.rs-idblock{min-width:220px; display:flex; flex-direction:column; gap:5px}
+.rs-idrow{display:flex; justify-content:space-between; gap:14px; font-size:13px; align-items:center}
+.rs-idrow span{color:var(--text-muted); text-transform:uppercase; font-size:10.5px; letter-spacing:1px; font-weight:600}
+.rs-idrow strong{color:var(--text); font-weight:700}
+
+.rs-title-band{
+  padding:9px 26px; font-size:12px; font-weight:800; letter-spacing:3px;
+  color:#67E8F9; background:rgba(2,8,23,.4);
+  border-bottom:1px solid var(--border);
+}
+
+.rs-section{padding:18px 26px; border-bottom:1px solid var(--border)}
+.rs-sec-label{
+  font-size:11px; letter-spacing:1.4px; text-transform:uppercase;
+  color:var(--brand-accent); font-weight:800; margin-bottom:12px;
+}
+.rs-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:12px; overflow:hidden}
+.rs-cell{background:rgba(2,8,23,.35); padding:12px 14px}
+.rs-cell span{display:block; font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:3px}
+.rs-cell strong{font-weight:700; font-size:14.5px}
+
+.rs-diagnosis{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  padding:16px 18px; border-radius:12px;
+  background:rgba(2,8,23,.35); border:1px solid var(--border);
+}
+.rs-dx-name{font-family:'Sora',sans-serif; font-size:20px; font-weight:700; color:var(--text)}
+
+.rs-rx{display:flex; gap:14px; align-items:flex-start; padding:16px 18px; border-radius:12px; background:rgba(2,8,23,.35); border:1px solid var(--border)}
+.rs-rx-mark{font-size:34px; line-height:1; color:var(--brand-accent); font-family:'JetBrains Mono',monospace; flex-shrink:0}
+.rs-rx-body{white-space:pre-wrap; font-size:15px; line-height:1.7; padding-top:4px}
+
+.rs-remarks{white-space:pre-wrap; font-size:14.5px; line-height:1.7; padding:14px 16px; border-radius:12px; background:rgba(2,8,23,.35); border:1px dashed var(--border-strong); color:var(--text)}
+
+.rs-signrow{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; padding:22px 26px}
+.rs-sign{min-width:220px}
+.rs-sign-line{font-family:'Sora',sans-serif; font-weight:700; font-size:16px; border-top:2px solid var(--border-strong); padding-top:8px; margin-top:26px}
+.rs-sign-cap{font-size:11.5px; color:var(--text-muted); margin-top:3px}
+.rs-stamp{
+  display:flex; align-items:center; gap:12px;
+  padding:12px 18px; border-radius:14px;
+  border:2px solid rgba(34,197,94,.45); color:#86EFAC;
+  background:rgba(34,197,94,.07);
+  transform:rotate(-4deg); box-shadow:var(--elev-1);
+}
+.rs-stamp i{font-size:30px}
+.rs-stamp-t{font-family:'Sora',sans-serif; font-weight:800; letter-spacing:2px; font-size:15px}
+.rs-stamp-s{font-size:11px; opacity:.85}
+
+.rs-payment{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin:0 26px 20px; padding:12px 16px; border-radius:12px;
+  background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.28); color:#FCD34D; font-size:13.5px;
+}
+
+.rs-foot{
+  display:flex; gap:10px; align-items:flex-start;
+  padding:16px 26px; font-size:11.5px; line-height:1.6;
+  color:var(--text-dim); background:rgba(2,8,23,.4); border-top:1px solid var(--border);
+}
+.rs-foot i{color:var(--brand-accent); margin-top:1px; flex-shrink:0}
+
+@media (max-width:640px){
+  .rs-head{flex-direction:column}
+  .rs-idblock{min-width:0; width:100%}
+}
+</style>
+{% endblock %}

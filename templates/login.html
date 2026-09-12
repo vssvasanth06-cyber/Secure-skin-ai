@@ -1,81 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Secure Skin AI - Login</title>
+{% extends "_auth_base.html" %}
+{% block title %}Sign in — Secure Skin AI{% endblock %}
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+{% block card_body %}
+  <div class="auth-brand">
+    <span class="logo" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></span>
+    <span>
+      <div class="name">Secure Skin&nbsp;AI</div>
+      <div class="tagline">Hospital Portal</div>
+    </span>
+  </div>
+  <h1 id="auth-title" class="auth-title">Welcome back</h1>
+  <p class="auth-subtitle">Sign in to your hospital portal account. We'll send an OTP to your email.</p>
 
-    <style>
-        body {
-            background: linear-gradient(to right, #e3f2fd, #f8fbff);
-        }
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{% if 'error' in m.tags %}error{% elif 'success' in m.tags %}success{% elif 'warning' in m.tags %}warning{% else %}info{% endif %}">
+        <i class="bi
+          {% if 'error' in m.tags %}bi-exclamation-octagon-fill
+          {% elif 'success' in m.tags %}bi-check-circle-fill
+          {% elif 'warning' in m.tags %}bi-exclamation-triangle-fill
+          {% else %}bi-info-circle-fill{% endif %}"></i>
+        <span>{{ m }}</span>
+      </div>
+    {% endfor %}
+  {% endif %}
 
-        .login-card {
-            border-radius: 15px;
-        }
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 
-        .hospital-title {
-            font-weight: bold;
-            color: #0d6efd;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="container d-flex justify-content-center align-items-center vh-100">
-    
-    <div class="card shadow-lg p-4 login-card" style="width: 400px;">
-        
-        <h3 class="text-center hospital-title mb-3">🏥 Secure Skin AI</h3>
-        <p class="text-center text-muted">Hospital Management Portal</p>
-
-        <form method="POST">
-            {% csrf_token %}
-
-            <!-- Role Selection -->
-            <div class="mb-3">
-                <label class="form-label">Select Role</label>
-                <select name="role" class="form-select" required>
-                    <option value="">-- Select Role --</option>
-                    <option value="admin">Admin</option>
-                    <option value="doctor">Doctor</option>
-                    <option value="patient">Patient</option>
-                </select>
-            </div>
-
-            <!-- Username -->
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input type="text" name="username" class="form-control" placeholder="Enter username" required>
-            </div>
-
-            <!-- Password -->
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input type="password" name="password" class="form-control" placeholder="Enter password" required>
-            </div>
-
-            <!-- Button -->
-            <div class="d-grid">
-                <button type="submit" class="btn btn-primary">
-                    Login
-                </button>
-            </div>
-
-            <!-- Error Message -->
-            {% if error %}
-                <div class="alert alert-danger mt-3 text-center">
-                    {{ error }}
-                </div>
-            {% endif %}
-        </form>
-
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" class="input"
+             placeholder="Enter your username" autocomplete="username" required>
     </div>
 
-</div>
+    <div class="field">
+      <label for="password">Password</label>
+      <div class="password-box">
+        <input id="password" name="password" type="password" class="input"
+               placeholder="Enter your password" autocomplete="current-password" required>
+        <button type="button" class="eye" aria-label="Show password" onclick="togglePwd(this)">
+          <i class="bi bi-eye"></i>
+        </button>
+      </div>
+    </div>
 
-</body>
-</html>
+    <button type="submit" class="btn btn-primary" style="margin-top:6px">
+      Continue <i class="bi bi-arrow-right"></i>
+    </button>
+  </form>
+
+  <div class="auth-links">
+    <a href="{% url 'forgot_password' %}">Forgot password?</a>
+    <div style="margin-top:6px">New here? <a href="{% url 'register' %}">Create an account</a></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePwd(btn){
+  const f = document.getElementById('password');
+  const i = btn.querySelector('i');
+  if(f.type === 'password'){ f.type = 'text'; i.classList.replace('bi-eye','bi-eye-slash'); btn.setAttribute('aria-label','Hide password'); }
+  else { f.type = 'password'; i.classList.replace('bi-eye-slash','bi-eye'); btn.setAttribute('aria-label','Show password'); }
+}
+</script>
+{% endblock %}

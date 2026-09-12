@@ -1,0 +1,85 @@
+{% extends "_base.html" %}
+{% block title %}Reports Dashboard — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-file-earmark-bar-graph-fill"></i> Reports Dashboard</h1>
+    <div class="subtitle">{{ all_reports|length }} reports on file.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; margin-bottom:18px;">
+  <a href="{% url 'weekly_uploads' %}" class="card-soft" style="text-decoration:none; color:inherit; display:block;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div class="text-muted-c" style="font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:600;">Weekly Uploads</div>
+        <div style="font-size:26px; font-weight:800; margin-top:4px;">{{ weekly_upload_count }}</div>
+      </div>
+      <div class="stat-icon tone-primary"><i class="bi bi-cloud-upload"></i></div>
+    </div>
+  </a>
+  <a href="{% url 'weekly_reports' %}" class="card-soft" style="text-decoration:none; color:inherit; display:block;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div class="text-muted-c" style="font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:600;">Weekly Reports</div>
+        <div style="font-size:26px; font-weight:800; margin-top:4px;">{{ weekly_report_count }}</div>
+      </div>
+      <div class="stat-icon tone-info"><i class="bi bi-graph-up"></i></div>
+    </div>
+  </a>
+</div>
+
+<section class="card-soft" style="margin-bottom:16px;">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <i class="bi bi-search text-muted-c"></i>
+    <input id="searchInput" class="input" placeholder="Search reports by patient or ID…"
+           style="background:transparent; border:none; padding:10px 4px;">
+  </div>
+</section>
+
+<section class="card-soft" style="padding:0; overflow:hidden;">
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:14px;" id="tableData">
+      <thead>
+        <tr style="text-align:left; color:var(--text-muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;">
+          <th style="padding:12px 18px;">ID</th>
+          <th style="padding:12px 18px;">Patient</th>
+          <th style="padding:12px 18px;">Severity</th>
+          <th style="padding:12px 18px;">Status</th>
+          <th style="padding:12px 18px;">Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in all_reports %}
+        <tr onclick="window.location.href='{% url 'view_report' r.id %}'" style="border-top:1px solid var(--border); cursor:pointer;"
+            onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'">
+          <td style="padding:12px 18px; font-weight:600;">RPT-{{ r.id|stringformat:"05d" }}</td>
+          <td style="padding:12px 18px;"><i class="bi bi-person text-muted-c"></i> {{ r.image.user.get_full_name|default:r.image.user.username }}</td>
+          <td style="padding:12px 18px;">
+            <span class="chip {% if r.severity == 'severe' %}chip-danger{% else %}chip-info{% endif %}" style="text-transform:capitalize;">{{ r.severity }}</span>
+          </td>
+          <td style="padding:12px 18px;">
+            {% if r.is_paid %}<span class="chip chip-success">Paid</span>{% else %}<span class="chip chip-warn">Pending</span>{% endif %}
+          </td>
+          <td style="padding:12px 18px; color:var(--text-muted);">{{ r.created_at|date:"d M Y, h:i A" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="padding:24px; text-align:center; color:var(--text-muted);">No reports yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+document.getElementById("searchInput").addEventListener("input", function(){
+  const v = this.value.toLowerCase();
+  document.querySelectorAll("#tableData tbody tr").forEach(r => r.style.display = r.innerText.toLowerCase().includes(v) ? "" : "none");
+});
+</script>
+{% endblock %}

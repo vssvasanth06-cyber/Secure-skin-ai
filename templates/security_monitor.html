@@ -1,0 +1,218 @@
+{% extends "_base.html" %}
+{% block title %}Live Security Monitor — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header" style="justify-content:space-between; flex-wrap:wrap; gap:14px;">
+  <div>
+    <h1><i class="bi bi-broadcast-pin"></i> Live Security Monitor</h1>
+    <div class="subtitle">
+      Real-time SOC · auto-refresh <span id="pollState" class="mono">4s</span> ·
+      <span id="genAt" class="mono">{{ generated_at }}</span>
+    </div>
+  </div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <span class="chip {% if alerts_enabled %}chip-success{% else %}chip-muted{% endif %}">
+      <i class="bi bi-envelope-{% if alerts_enabled %}check{% else %}slash{% endif %}"></i>
+      Email alerts {% if alerts_enabled %}ON{% else %}OFF{% endif %}
+    </span>
+    <select id="windowSel" class="input" style="width:auto; min-height:40px; padding:8px 12px;">
+      <option value="15">Last 15 min</option>
+      <option value="60" selected>Last 60 min</option>
+      <option value="360">Last 6 hours</option>
+      <option value="1440">Last 24 hours</option>
+    </select>
+    <button id="pauseBtn" class="btn btn-sm btn-outline"><i class="bi bi-pause-fill"></i> Pause</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Threat banner -->
+<section id="threatBanner" class="card-soft" style="margin-bottom:16px; display:flex; align-items:center; gap:16px;">
+  <div id="threatIcon" class="stat-icon" style="width:58px; height:58px; font-size:26px;"><i class="bi bi-shield-check"></i></div>
+  <div style="flex:1;">
+    <div class="text-muted-c" style="font-size:11px; letter-spacing:1.4px; text-transform:uppercase; font-weight:700;">Current Threat Level</div>
+    <div id="threatLevel" style="font-family:'Sora',sans-serif; font-size:28px; font-weight:800; line-height:1.1;">{{ threat_level }}</div>
+  </div>
+  <div class="mono" id="livePulse" style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:12px;">
+    <span class="live-dot"></span> streaming
+  </div>
+</section>
+
+<!-- Counter strip -->
+<div class="grid-stats" id="counterGrid">
+  <div class="stat-card"><div class="stat-icon tone-danger"><i class="bi bi-arrow-repeat"></i></div>
+    <div><p class="label">Replay Blocked</p><p class="value" data-k="replay">{{ counters.replay }}</p></div></div>
+  <div class="stat-card"><div class="stat-icon tone-danger"><i class="bi bi-shield-lock"></i></div>
+    <div><p class="label">IDOR Blocked</p><p class="value" data-k="idor">{{ counters.idor }}</p></div></div>
+  <div class="stat-card"><div class="stat-icon tone-danger"><i class="bi bi-file-earmark-break"></i></div>
+    <div><p class="label">Integrity Fails</p><p class="value" data-k="integrity">{{ counters.integrity }}</p></div></div>
+  <div class="stat-card"><div class="stat-icon tone-warn"><i class="bi bi-cash-coin"></i></div>
+    <div><p class="label">Fake UPI Rejected</p><p class="value" data-k="payment_fraud">{{ counters.payment_fraud }}</p></div></div>
+  <div class="stat-card"><div class="stat-icon tone-warn"><i class="bi bi-x-circle"></i></div>
+    <div><p class="label">Failed Logins</p><p class="value" data-k="failed_login">{{ counters.failed_login }}</p></div></div>
+  <div class="stat-card"><div class="stat-icon tone-info"><i class="bi bi-activity"></i></div>
+    <div><p class="label">Anomalies</p><p class="value" data-k="anomaly">{{ counters.anomaly }}</p></div></div>
+</div>
+
+<div style="display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:16px;" class="mon-grid">
+
+  <!-- Live event feed -->
+  <section class="card-soft">
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-list-columns-reverse text-muted-c"></i> Live Event Feed</h2>
+      <span class="chip chip-muted"><span id="evtCount">{{ events_total }}</span> events · {{ window_min }}m</span>
+    </header>
+    <div id="feed" style="display:flex; flex-direction:column; gap:8px; max-height:560px; overflow-y:auto;">
+      <!-- rows injected by JS -->
+    </div>
+    <div id="feedEmpty" style="text-align:center; padding:36px 12px; color:var(--text-muted); display:none;">
+      <i class="bi bi-shield-check" style="font-size:34px; opacity:.5; color:var(--brand-success);"></i>
+      <p style="margin:12px 0 0;">No security events in this window. All quiet.</p>
+    </div>
+  </section>
+
+  <!-- Top source IPs -->
+  <section class="card-soft">
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-hdd-network text-muted-c"></i> Top Source IPs</h2>
+    </header>
+    <div id="ipList" style="display:flex; flex-direction:column; gap:8px;"></div>
+    <div class="divider"></div>
+    <div style="font-size:12px; color:var(--text-dim); display:flex; gap:8px; align-items:flex-start;">
+      <i class="bi bi-info-circle" style="margin-top:2px;"></i>
+      <span>Critical events (replay, IDOR, integrity, fake-UPI) trigger an instant email to
+        <span class="mono">{{ alert_email|default:"—" }}</span> and are logged for the scheduled sweep.</span>
+    </div>
+  </section>
+</div>
+
+<style>
+.evt-row{display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:11px;
+  background:rgba(255,255,255,.03); border:1px solid var(--border); box-shadow:var(--inset-hi);}
+.evt-row .evt-ic{width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-size:15px; flex-shrink:0;}
+.evt-row.sev-critical{border-color:rgba(239,68,68,.4); background:rgba(239,68,68,.07)}
+.evt-row.sev-critical .evt-ic{background:rgba(239,68,68,.16); color:#FCA5A5}
+.evt-row.sev-warning{border-color:rgba(245,158,11,.3)}
+.evt-row.sev-warning .evt-ic{background:rgba(245,158,11,.14); color:#FCD34D}
+.evt-row.sev-info .evt-ic{background:rgba(34,211,238,.14); color:#67E8F9}
+.evt-row.sev-ok .evt-ic{background:rgba(34,197,94,.14); color:#86EFAC}
+.evt-row .evt-detail{font-size:12px; color:var(--text-muted)}
+.evt-new{animation:evtIn .5s var(--ease)}
+@keyframes evtIn{from{opacity:0; transform:translateX(-10px); background:rgba(34,211,238,.12)} to{opacity:1; transform:none}}
+.threat-CRITICAL #threatLevel,.tl-CRITICAL{color:#F87171}
+@media (max-width:900px){ .mon-grid{grid-template-columns:1fr !important;} }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const feedEl   = document.getElementById('feed');
+  const feedEmpty= document.getElementById('feedEmpty');
+  const ipList   = document.getElementById('ipList');
+  const banner   = document.getElementById('threatBanner');
+  const tIcon    = document.getElementById('threatIcon');
+  const tLevel   = document.getElementById('threatLevel');
+  const genAt    = document.getElementById('genAt');
+  const evtCount = document.getElementById('evtCount');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const windowSel= document.getElementById('windowSel');
+  const pollState= document.getElementById('pollState');
+
+  const ICON = {
+    'bi-arrow-repeat':'bi-arrow-repeat','bi-shield-lock':'bi-shield-lock',
+    'bi-file-earmark-break':'bi-file-earmark-break','bi-cash-coin':'bi-cash-coin'
+  };
+  const THREAT_TONE = {
+    CRITICAL:{cls:'tone-danger', ic:'bi-exclamation-octagon-fill', col:'#F87171', bd:'rgba(239,68,68,.4)'},
+    HIGH:    {cls:'tone-danger', ic:'bi-exclamation-triangle-fill', col:'#FCA5A5', bd:'rgba(239,68,68,.32)'},
+    ELEVATED:{cls:'tone-warn',   ic:'bi-shield-exclamation', col:'#FCD34D', bd:'rgba(245,158,11,.35)'},
+    NORMAL:  {cls:'tone-success',ic:'bi-shield-check', col:'#86EFAC', bd:'var(--border)'}
+  };
+
+  let paused = false, seen = new Set(), firstLoad = true;
+  const POLL_MS = 4000;
+
+  function esc(s){ return (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  function rowKey(e){ return e.date+e.time+e.user+e.ip+e.label+e.detail; }
+
+  function render(data){
+    genAt.textContent = data.generated_at;
+    evtCount.textContent = data.events_total;
+
+    // Threat banner
+    const t = THREAT_TONE[data.threat_level] || THREAT_TONE.NORMAL;
+    tIcon.className = 'stat-icon ' + t.cls;
+    tIcon.style.width = tIcon.style.height = '58px'; tIcon.style.fontSize = '26px';
+    tIcon.innerHTML = '<i class="bi ' + t.ic + '"></i>';
+    tLevel.textContent = data.threat_level;
+    tLevel.style.color = t.col;
+    banner.style.borderColor = t.bd;
+
+    // Counters
+    document.querySelectorAll('#counterGrid .value[data-k]').forEach(el => {
+      const v = data.counters[el.dataset.k] ?? 0;
+      if(el.textContent != v){ el.textContent = v; }
+    });
+
+    // Feed
+    if(!data.feed.length){ feedEmpty.style.display='block'; feedEl.innerHTML=''; }
+    else {
+      feedEmpty.style.display='none';
+      feedEl.innerHTML = data.feed.map(e => {
+        const k = rowKey(e);
+        const isNew = !firstLoad && !seen.has(k);
+        return '<div class="evt-row sev-'+e.severity+(isNew?' evt-new':'')+'">'
+          + '<div class="evt-ic"><i class="bi '+esc(e.icon)+'"></i></div>'
+          + '<div style="flex:1; min-width:0;">'
+          +   '<div style="font-weight:600; font-size:13.5px;">'+esc(e.label)
+          +     (e.detail ? ' <span class="evt-detail">— '+esc(e.detail)+'</span>':'')+'</div>'
+          +   '<div class="evt-detail"><i class="bi bi-person"></i> '+esc(e.user)
+          +     ' &middot; <i class="bi bi-hdd-network"></i> <span class="mono">'+esc(e.ip)+'</span></div>'
+          + '</div>'
+          + '<div class="mono" style="font-size:12px; color:var(--text-muted); text-align:right;">'
+          +   e.time+'<br><span style="font-size:10px;">'+esc(e.date)+'</span></div>'
+          + '</div>';
+      }).join('');
+      seen = new Set(data.feed.map(rowKey));
+    }
+
+    // Top IPs
+    ipList.innerHTML = (data.top_ips||[]).map(x =>
+      '<div class="row-item" style="display:flex; align-items:center; justify-content:space-between;">'
+      + '<span class="mono">'+esc(x.ip)+'</span>'
+      + '<span class="chip chip-muted">'+x.hits+' hits</span></div>'
+    ).join('') || '<div class="text-muted-c" style="font-size:13px;">No traffic in window.</div>';
+
+    firstLoad = false;
+  }
+
+  async function poll(){
+    if(paused) return;
+    try{
+      const r = await fetch('{% url "security_monitor_feed" %}?window=' + windowSel.value,
+                            {headers:{'X-Requested-With':'fetch'}});
+      if(r.ok){ render(await r.json()); pollState.textContent='4s'; }
+      else { pollState.textContent='err'; }
+    }catch(e){ pollState.textContent='offline'; }
+  }
+
+  pauseBtn.addEventListener('click', () => {
+    paused = !paused;
+    pauseBtn.innerHTML = paused
+      ? '<i class="bi bi-play-fill"></i> Resume'
+      : '<i class="bi bi-pause-fill"></i> Pause';
+    pauseBtn.classList.toggle('btn-warn', paused);
+    pauseBtn.classList.toggle('btn-outline', !paused);
+    if(!paused) poll();
+  });
+  windowSel.addEventListener('change', () => { firstLoad = true; poll(); });
+
+  poll();
+  setInterval(poll, POLL_MS);
+})();
+</script>
+{% endblock %}

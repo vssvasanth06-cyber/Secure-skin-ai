@@ -1,37 +1,260 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Patient Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body style="background-color:#eef3f8;">
+{% extends "_base.html" %}
+{% block title %}Patient Dashboard — Secure Skin AI{% endblock %}
 
-<nav class="navbar navbar-dark bg-primary">
-    <div class="container-fluid">
-        <span class="navbar-brand mb-0 h1">🏥 Secure Skin AI - Patient</span>
-        <a href="{% url 'logout' %}" class="btn btn-light btn-sm">Logout</a>
+{% block page_header %}
+<div class="page-header" style="align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+  <div>
+    <h1>Welcome, {{ request.user.get_full_name|default:request.user.username }}</h1>
+    <div class="subtitle">
+      <i class="bi bi-clock-history"></i>
+      Last sign-in {% if request.user.last_login %}on {{ request.user.last_login|date:"d M Y, h:i A" }}{% else %}moments ago{% endif %}
     </div>
-</nav>
+  </div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap">
+    <a href="{% url 'patient_upload' %}" class="btn btn-primary">
+      <i class="bi bi-cloud-upload-fill"></i> New Upload
+    </a>
+    <a href="{% url 'view_slots' %}" class="btn btn-outline">
+      <i class="bi bi-calendar-plus"></i> Book Appointment
+    </a>
+  </div>
+</div>
+{% endblock %}
 
-<div class="container mt-5 d-flex justify-content-center">
-    <div class="card shadow-lg p-4" style="width: 500px; border-radius: 15px;">
-        
-        <h4 class="text-center text-primary mb-4">Upload Skin Image</h4>
+{% block content %}
 
-        <form method="POST" enctype="multipart/form-data" action="{% url 'patient_upload' %}">
-            {% csrf_token %}
-            
-            <div class="mb-3">
-                <input type="file" name="image" class="form-control" required>
+<!-- ═══════════════ PANEL · OVERVIEW ═══════════════ -->
+<div data-panel-content="overview">
+
+  <div class="grid-stats">
+    <div class="stat-card">
+      <div class="stat-icon tone-primary"><i class="bi bi-images"></i></div>
+      <div><p class="label">Total Uploads</p><p class="value">{{ images|length }}</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon tone-success"><i class="bi bi-file-earmark-check"></i></div>
+      <div><p class="label">Reports</p><p class="value">{{ total_reports }}</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon tone-info"><i class="bi bi-check2-square"></i></div>
+      <div><p class="label">Paid</p><p class="value">{{ paid_reports }}</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon tone-warn"><i class="bi bi-hourglass-split"></i></div>
+      <div><p class="label">Pending Payment</p><p class="value">{{ unpaid_reports }}</p></div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px;" class="dash-grid">
+
+    <!-- Recent uploads (preview) -->
+    <section class="card-soft">
+      <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-images text-muted-c"></i> Recent Uploads</h2>
+        <a href="#uploads" class="btn btn-sm btn-outline js-goto-panel" data-goto="uploads">See all <i class="bi bi-arrow-right"></i></a>
+      </header>
+      {% if images %}
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          {% for img in images|slice:":4" %}
+          <div class="row-item" style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-weight:600;">Case #{{ img.id }}</div>
+              <div class="text-muted-c" style="font-size:12px;">
+                <i class="bi bi-calendar3"></i> {{ img.uploaded_at|date:"d M Y, h:i A" }}
+              </div>
             </div>
+            <span class="chip {% if img.is_verified %}chip-success{% else %}chip-muted{% endif %}">
+              {% if img.is_verified %}Verified{% else %}Pending{% endif %}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align:center; padding:32px 12px; color:var(--text-muted);">
+          <i class="bi bi-images" style="font-size:36px; opacity:.5;"></i>
+          <p style="margin:12px 0 0;">No uploads yet.<br>Upload your first skin image to get a doctor's report.</p>
+        </div>
+      {% endif %}
+    </section>
 
-            <button type="submit" class="btn btn-success w-100">
-                Upload & Analyze
-            </button>
-        </form>
-
-    </div>
+    <!-- Latest reports (preview) -->
+    <section class="card-soft">
+      <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-file-earmark-medical text-muted-c"></i> Latest Reports</h2>
+        <a href="#reports" class="btn btn-sm btn-outline js-goto-panel" data-goto="reports">See all <i class="bi bi-arrow-right"></i></a>
+      </header>
+      {% if reports %}
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          {% for report in reports|slice:":4" %}
+          <div class="row-item" style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-weight:600;">RPT-{{ report.id|stringformat:"05d" }}</div>
+              <div class="text-muted-c" style="font-size:12px;">{{ report.created_at|date:"d M Y" }} · <span style="text-transform:capitalize;">{{ report.severity }}</span></div>
+            </div>
+            {% if report.severity == "mild" and report.is_paid %}
+              <span class="chip chip-success">Paid</span>
+            {% elif report.severity == "mild" %}
+              <span class="chip chip-warn">Unpaid</span>
+            {% else %}
+              <span class="chip chip-danger">Severe</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align:center; padding:32px 12px; color:var(--text-muted);">
+          <i class="bi bi-file-earmark-medical" style="font-size:36px; opacity:.5;"></i>
+          <p style="margin:12px 0 0;">No reports yet. Your doctor will send one after reviewing your upload.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
 </div>
 
-</body>
-</html>
+<!-- ═══════════════ PANEL · MY UPLOADS ═══════════════ -->
+<div data-panel-content="uploads">
+  <section class="card-soft">
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-images text-muted-c"></i> My Uploads</h2>
+      <a href="{% url 'patient_upload' %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Upload</a>
+    </header>
+    {% if images %}
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        {% for img in images %}
+        <div class="row-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:600;">Case #{{ img.id }}</div>
+            <div class="text-muted-c" style="font-size:12px;">
+              <i class="bi bi-calendar3"></i> {{ img.uploaded_at|date:"d M Y, h:i A" }}
+              &nbsp;·&nbsp; Dr. {{ img.assigned_doctor.get_full_name|default:img.assigned_doctor.username }}
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span class="chip chip-info"><i class="bi bi-lock-fill"></i> AES-RSA</span>
+            <span class="chip {% if img.is_verified %}chip-success{% else %}chip-muted{% endif %}">
+              <i class="bi {% if img.is_verified %}bi-shield-check{% else %}bi-hourglass-split{% endif %}"></i>
+              {% if img.is_verified %}Verified{% else %}Pending{% endif %}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:40px 12px; color:var(--text-muted);">
+        <i class="bi bi-images" style="font-size:40px; opacity:.5;"></i>
+        <p style="margin:12px 0 16px;">No uploads yet. Your images are hashed (SHA-256) and encrypted (AES + RSA) on upload.</p>
+        <a href="{% url 'patient_upload' %}" class="btn btn-primary" style="width:auto;"><i class="bi bi-cloud-upload-fill"></i> Upload first image</a>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<!-- ═══════════════ PANEL · MY REPORTS ═══════════════ -->
+<div data-panel-content="reports">
+  <section class="card-soft">
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-file-earmark-medical text-muted-c"></i> My Reports</h2>
+      <span class="chip chip-muted">{{ total_reports }} total</span>
+    </header>
+
+    {% if reports %}
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        {% for report in reports %}
+        <div class="row-item">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:600;">RPT-{{ report.id|stringformat:"05d" }}</div>
+              <div class="text-muted-c" style="font-size:12px;">
+                <i class="bi bi-calendar3"></i> {{ report.created_at|date:"d M Y, h:i A" }}
+                &nbsp;·&nbsp; Severity: <span style="text-transform:capitalize;">{{ report.severity }}</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              {% if report.severity == "mild" %}
+                {% if report.is_paid %}
+                  <span class="chip chip-success"><i class="bi bi-check-circle"></i> Paid</span>
+                {% else %}
+                  <span class="chip chip-warn"><i class="bi bi-hourglass-split"></i> Unpaid</span>
+                {% endif %}
+              {% else %}
+                {% if report.appointment_needed %}
+                  <span class="chip chip-warn"><i class="bi bi-calendar-plus"></i> Appt Required</span>
+                {% else %}
+                  <span class="chip chip-info"><i class="bi bi-heart-pulse"></i> Severe</span>
+                {% endif %}
+              {% endif %}
+
+              {% if report.severity == "mild" and not report.is_paid %}
+                <a href="{% url 'make_payment' report.id %}" class="btn btn-sm btn-warn">Pay ₹350</a>
+              {% elif report.severity == "severe" and report.appointment_needed %}
+                <a href="{% url 'view_slots' %}?for_report={{ report.id }}" class="btn btn-sm btn-primary"><i class="bi bi-calendar-plus"></i> Book</a>
+              {% else %}
+                <a href="{% url 'view_report' report.id %}" class="btn btn-sm btn-outline"><i class="bi bi-eye"></i> View</a>
+                <a href="{% url 'download_report' report.id %}" class="btn btn-sm btn-success"><i class="bi bi-download"></i> PDF</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:40px 12px; color:var(--text-muted);">
+        <i class="bi bi-file-earmark-medical" style="font-size:40px; opacity:.5;"></i>
+        <p style="margin:12px 0 0;">No reports yet. Your doctor will send one after reviewing your upload.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<!-- ═══════════════ PANEL · APPOINTMENTS ═══════════════ -->
+<div data-panel-content="appointments">
+  <section class="card-soft">
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-calendar-check text-muted-c"></i> Upcoming Appointments</h2>
+      <a href="{% url 'view_slots' %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Book new</a>
+    </header>
+
+    {% if booked_slots %}
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px;">
+        {% for slot in booked_slots %}
+        <div class="row-item">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+            <div class="stat-icon tone-primary" style="width:36px;height:36px;font-size:14px;">
+              <i class="bi bi-person-vcard"></i>
+            </div>
+            <div style="font-weight:600;">Dr. {{ slot.doctor.get_full_name|default:slot.doctor.username }}</div>
+          </div>
+          <div class="text-muted-c" style="font-size:13px; margin-bottom:10px;">
+            <i class="bi bi-calendar3"></i> {{ slot.date|date:"d M Y" }} · <i class="bi bi-clock"></i> {{ slot.slot }}
+          </div>
+          <a href="{% url 'cancel_booking' slot.id %}" class="btn btn-sm btn-danger">
+            <i class="bi bi-x-circle"></i> Cancel
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:32px 12px; color:var(--text-muted);">
+        No upcoming appointments. <a href="{% url 'view_slots' %}" class="link">Browse available slots →</a>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<style>
+@media (max-width: 900px){ .dash-grid{grid-template-columns:1fr !important;} }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* "See all" buttons inside overview jump to the matching sidebar panel */
+document.querySelectorAll('.js-goto-panel').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const link = document.querySelector('.nav-link-s[data-panel="' + btn.dataset.goto + '"]');
+    if(link) link.click();
+  });
+});
+</script>
+{% endblock %}

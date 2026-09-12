@@ -1,24 +1,264 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Admin Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body style="background-color:#eef3f8;">
+{% extends "_base.html" %}
+{% block title %}Admin Dashboard — Secure Skin AI{% endblock %}
 
-<nav class="navbar navbar-dark bg-dark">
-    <div class="container-fluid">
-        <span class="navbar-brand">⚙ Admin Panel</span>
-        <a href="{% url 'logout' %}" class="btn btn-light btn-sm">Logout</a>
+{% block page_header %}
+<div class="page-header" style="align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+  <div>
+    <h1><i class="bi bi-shield-lock-fill"></i> Admin Control Center</h1>
+    <div class="subtitle">
+      <i class="bi bi-clock-history"></i>
+      Signed in as <strong>{{ request.user.username }}</strong>{% if request.user.last_login %} · Last login {{ request.user.last_login|date:"d M Y, h:i A" }}{% endif %}
     </div>
-</nav>
+  </div>
+</div>
+{% endblock %}
 
-<div class="container mt-5">
-    <div class="card shadow-lg p-4">
-        <h4>System Overview</h4>
-        <p>Admin controls and monitoring...</p>
+{% block content %}
+
+<!-- ═══════════════ PANEL · OVERVIEW ═══════════════ -->
+<div data-panel-content="overview">
+
+  <!-- KPI STRIP -->
+  <div class="grid-stats">
+    <div class="stat-card">
+      <div class="stat-icon tone-primary"><i class="bi bi-people-fill"></i></div>
+      <div><p class="label">Total Users</p><p class="value">{{ total_users }}</p></div>
     </div>
+    <div class="stat-card">
+      <div class="stat-icon tone-info"><i class="bi bi-person-badge-fill"></i></div>
+      <div><p class="label">Doctors</p><p class="value">{{ total_doctors }}</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon tone-success"><i class="bi bi-person-heart"></i></div>
+      <div><p class="label">Patients</p><p class="value">{{ total_patients }}</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon tone-warn"><i class="bi bi-file-earmark-medical"></i></div>
+      <div><p class="label">Reports</p><p class="value">{{ total_reports }}</p></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon tone-danger"><i class="bi bi-images"></i></div>
+      <div><p class="label">Uploads</p><p class="value">{{ total_images }}</p></div>
+    </div>
+  </div>
+
+  <!-- WEEKLY + CRYPTO CARDS -->
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin-bottom:18px;">
+    <a href="{% url 'weekly_uploads' %}" class="card-soft" style="text-decoration:none; color:inherit; display:block;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div class="text-muted-c" style="font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:600;">This Week · Uploads</div>
+          <div style="font-size:26px; font-weight:800; margin-top:4px; font-family:'Sora',sans-serif;">{{ weekly_upload_count }}</div>
+        </div>
+        <div class="stat-icon tone-primary"><i class="bi bi-cloud-upload"></i></div>
+      </div>
+    </a>
+    <a href="{% url 'weekly_reports' %}" class="card-soft" style="text-decoration:none; color:inherit; display:block;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div class="text-muted-c" style="font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:600;">This Week · Reports</div>
+          <div style="font-size:26px; font-weight:800; margin-top:4px; font-family:'Sora',sans-serif;">{{ weekly_report_count }}</div>
+        </div>
+        <div class="stat-icon tone-info"><i class="bi bi-graph-up"></i></div>
+      </div>
+    </a>
+    <a href="{% url 'admin_patient_crypto' %}" class="card-soft" style="text-decoration:none; color:inherit; display:block;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div class="text-muted-c" style="font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:600;">Crypto Proof</div>
+          <div style="font-size:16px; font-weight:700; margin-top:4px;">Patient RSA Keys</div>
+        </div>
+        <div class="stat-icon tone-success"><i class="bi bi-key-fill"></i></div>
+      </div>
+    </a>
+    <a href="{% url 'admin_doctor_crypto' %}" class="card-soft" style="text-decoration:none; color:inherit; display:block;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div class="text-muted-c" style="font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:600;">Crypto Proof</div>
+          <div style="font-size:16px; font-weight:700; margin-top:4px;">Doctor RSA Keys</div>
+        </div>
+        <div class="stat-icon tone-warn"><i class="bi bi-shield-lock"></i></div>
+      </div>
+    </a>
+  </div>
+
+  {% if pending_upi %}
+  <section class="card-soft" style="border-color:rgba(245,158,11,.35);">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="stat-icon tone-warn"><i class="bi bi-hourglass-split"></i></div>
+        <div>
+          <div style="font-weight:700;">{{ pending_upi|length }} UPI payment{{ pending_upi|length|pluralize }} awaiting approval</div>
+          <div class="text-muted-c" style="font-size:13px;">Patients cannot open their reports until you verify the transfer.</div>
+        </div>
+      </div>
+      <a href="#payments" class="btn btn-warn js-goto-payments"><i class="bi bi-credit-card-2-front"></i> Review now</a>
+    </div>
+  </section>
+  {% endif %}
 </div>
 
-</body>
-</html>
+<!-- ═══════════════ PANEL · UPI PAYMENTS ═══════════════ -->
+<div data-panel-content="payments">
+  <section class="card-soft" {% if pending_upi %}style="border-color:rgba(245,158,11,.35);"{% endif %}>
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;">
+        <i class="bi bi-credit-card-2-front" style="color:#FBBF24;"></i> Pending UPI approvals
+      </h2>
+      <span class="chip {% if pending_upi %}chip-warn{% else %}chip-muted{% endif %}">{{ pending_upi|length }} awaiting</span>
+    </header>
+    {% if pending_upi %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px;">
+      {% for r in pending_upi %}
+        <div class="row-item" style="background:rgba(245,158,11,.06); border-color:rgba(245,158,11,.28);">
+          <div style="font-weight:700;">Report RPT-{{ r.id|stringformat:"05d" }}</div>
+          <div class="text-muted-c" style="font-size:12px; margin:4px 0 10px;">
+            <i class="bi bi-person"></i> {{ r.image.user.get_full_name|default:r.image.user.username }}
+            &nbsp;·&nbsp; <span class="mono">{{ r.transaction_id }}</span>
+            &nbsp;·&nbsp; {{ r.payment_time|date:"d M Y, h:i A" }}
+          </div>
+          <div style="display:flex; gap:8px;">
+            <form method="post" action="{% url 'approve_upi_payment' r.id %}" style="margin:0;">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-success"><i class="bi bi-check2"></i> Approve</button>
+            </form>
+            <form method="post" action="{% url 'reject_upi_payment' r.id %}" style="margin:0;">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-danger"><i class="bi bi-x-lg"></i> Reject</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:32px 12px; color:var(--text-muted);">
+      <i class="bi bi-check2-circle" style="font-size:36px; opacity:.5; color:var(--brand-success);"></i>
+      <p style="margin:12px 0 0;">All clear — no UPI payments waiting for verification.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<!-- ═══════════════ PANEL · PERFORMANCE ═══════════════ -->
+<div data-panel-content="performance">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:14px;">
+
+    <!-- Patient performance -->
+    <section class="card-soft" id="patient-performance">
+      <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-person-heart text-muted-c"></i> Patient Performance</h2>
+        <a href="{% url 'admin_patients' %}" class="btn btn-sm btn-outline">All patients <i class="bi bi-arrow-up-right"></i></a>
+      </header>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead>
+            <tr style="text-align:left; color:var(--text-muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;">
+              <th style="padding:8px 10px;">Patient</th>
+              <th style="padding:8px 10px;">Uploads</th>
+              <th style="padding:8px 10px;">Reports</th>
+              <th style="padding:8px 10px;">Paid</th>
+              <th style="padding:8px 10px;">Unpaid</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in patient_perf %}
+            <tr style="border-top:1px solid var(--border);">
+              <td style="padding:10px;">{{ p.user.get_full_name|default:p.user.username }}</td>
+              <td style="padding:10px;">{{ p.uploads }}</td>
+              <td style="padding:10px;">{{ p.reports }}</td>
+              <td style="padding:10px;"><span class="chip chip-success">{{ p.paid }}</span></td>
+              <td style="padding:10px;"><span class="chip chip-warn">{{ p.unpaid }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">No patients yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Doctor performance -->
+    <section class="card-soft" id="doctor-performance">
+      <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-person-badge text-muted-c"></i> Doctor Performance</h2>
+        <a href="{% url 'admin_doctors' %}" class="btn btn-sm btn-outline">All doctors <i class="bi bi-arrow-up-right"></i></a>
+      </header>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead>
+            <tr style="text-align:left; color:var(--text-muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;">
+              <th style="padding:8px 10px;">Doctor</th>
+              <th style="padding:8px 10px;">Cases</th>
+              <th style="padding:8px 10px;">Verified</th>
+              <th style="padding:8px 10px;">Pending</th>
+              <th style="padding:8px 10px;">Written</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in doctor_perf %}
+            <tr style="border-top:1px solid var(--border);">
+              <td style="padding:10px;">Dr. {{ d.user.get_full_name|default:d.user.username }}</td>
+              <td style="padding:10px;">{{ d.cases }}</td>
+              <td style="padding:10px;"><span class="chip chip-success">{{ d.verified }}</span></td>
+              <td style="padding:10px;"><span class="chip chip-warn">{{ d.pending }}</span></td>
+              <td style="padding:10px;"><span class="chip chip-info">{{ d.written }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-muted);">No doctors yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ═══════════════ PANEL · ACTIVITY LOG ═══════════════ -->
+<div data-panel-content="activity">
+  <section class="card-soft">
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;"><i class="bi bi-clock-history text-muted-c"></i> Recent Activity</h2>
+      <span class="chip chip-muted">Last {{ logs|length }} events</span>
+    </header>
+    {% if logs %}
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead>
+            <tr style="text-align:left; color:var(--text-muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;">
+              <th style="padding:8px 10px;">User</th>
+              <th style="padding:8px 10px;">Role / Event</th>
+              <th style="padding:8px 10px;">IP</th>
+              <th style="padding:8px 10px;">When</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr style="border-top:1px solid var(--border);">
+              <td style="padding:10px;">{{ log.user.username|default:"—" }}</td>
+              <td style="padding:10px;"><span class="chip chip-muted mono" style="text-transform:none;">{{ log.role }}</span></td>
+              <td style="padding:10px;"><span class="mono">{{ log.ip_address|default:"—" }}</span></td>
+              <td style="padding:10px;"><span class="text-muted-c">{{ log.login_time|date:"d M Y, h:i:s A" }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:24px; color:var(--text-muted);">No activity yet.</div>
+    {% endif %}
+  </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.js-goto-payments').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const link = document.querySelector('.nav-link-s[data-panel="payments"]');
+    if(link) link.click();
+  });
+});
+</script>
+{% endblock %}

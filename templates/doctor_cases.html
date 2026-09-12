@@ -1,0 +1,119 @@
+{% extends "_base.html" %}
+{% block title %}Doctor Cases — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header" style="justify-content:space-between; flex-wrap:wrap; gap:14px;">
+  <div style="display:flex; align-items:center; gap:14px;">
+    <a href="{% url 'dashboard' %}" class="btn-back" aria-label="Back to dashboard">
+      <i class="bi bi-arrow-left"></i> Back
+    </a>
+    <div>
+      <h1><i class="bi bi-folder2-open"></i> Doctor Cases</h1>
+      <div class="subtitle">Every patient case assigned to you, with real-time verification status.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="grid-stats">
+  <div class="stat-card">
+    <div class="stat-icon tone-primary"><i class="bi bi-folder2-open"></i></div>
+    <div><p class="label">Total Cases</p><p class="value">{{ total_cases }}</p></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon tone-success"><i class="bi bi-shield-check"></i></div>
+    <div><p class="label">Verified</p><p class="value">{{ verified_cases }}</p></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon tone-warn"><i class="bi bi-hourglass-split"></i></div>
+    <div><p class="label">Not Verified</p><p class="value">{{ not_verified_cases }}</p></div>
+  </div>
+</div>
+
+<section class="card-soft" style="margin-bottom:14px;">
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:240px;">
+      <i class="bi bi-search text-muted-c" aria-hidden="true"></i>
+      <input id="searchInput" class="input" placeholder="Search patient name, case ID…"
+             style="background:transparent; border:none; padding:10px 4px;">
+    </div>
+    <select id="statusFilter" class="input" style="max-width:200px;">
+      <option value="all">All Cases</option>
+      <option value="verified">Verified only</option>
+      <option value="pending">Not Verified only</option>
+    </select>
+  </div>
+</section>
+
+<div id="caseList" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:14px;">
+  {% for image in images %}
+  <article class="case-item card-soft" data-status="{% if image.is_verified %}verified{% else %}pending{% endif %}" style="padding:16px;">
+    <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <div>
+        <div style="font-weight:700;">Case #{{ image.id }}</div>
+        <div class="text-muted-c" style="font-size:12px;">{{ image.uploaded_at|date:"d M Y, h:i A" }}</div>
+      </div>
+      {% if image.is_verified %}
+        <span class="chip chip-success"><i class="bi bi-shield-check"></i> Verified</span>
+      {% else %}
+        <span class="chip chip-warn"><i class="bi bi-hourglass-split"></i> Not Verified</span>
+      {% endif %}
+    </header>
+
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+      <div class="stat-icon tone-info" style="width:36px;height:36px;font-size:14px;">
+        <i class="bi bi-person-vcard"></i>
+      </div>
+      <div>
+        <div style="font-weight:600;">{{ image.user.get_full_name|default:image.user.username }}</div>
+        <div class="text-muted-c" style="font-size:12px;">@{{ image.user.username }}</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+      <span class="chip chip-info"><i class="bi bi-lock-fill"></i> Encrypted</span>
+      {% if image.severity %}
+        <span class="chip {% if image.severity == 'severe' %}chip-danger{% else %}chip-muted{% endif %}" style="text-transform:capitalize;">
+          {{ image.severity }}
+        </span>
+      {% endif %}
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a href="{% url 'view_decrypted_image' image.id %}" class="btn btn-sm btn-outline"><i class="bi bi-eye"></i> View</a>
+      <a href="{% url 'verify_image' image.id %}" class="btn btn-sm btn-warn"><i class="bi bi-shield-check"></i> Verify</a>
+      {% if not image.report_set.exists %}
+        <a href="{% url 'upload_report' image.id %}" class="btn btn-sm btn-success"><i class="bi bi-file-earmark-plus"></i> Report</a>
+      {% else %}
+        <span class="chip chip-success"><i class="bi bi-check2"></i> Report Sent</span>
+      {% endif %}
+    </div>
+  </article>
+  {% empty %}
+  <div class="card-soft" style="grid-column:1/-1; text-align:center; padding:40px 20px; color:var(--text-muted);">
+    <i class="bi bi-inbox" style="font-size:40px; opacity:.5;"></i>
+    <p style="margin:12px 0 0;">No cases assigned yet.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+(function(){
+  const search = document.getElementById('searchInput');
+  const filter = document.getElementById('statusFilter');
+  function apply(){
+    const term = search.value.toLowerCase();
+    const status = filter.value;
+    document.querySelectorAll('.case-item').forEach(el => {
+      const matchText = el.innerText.toLowerCase().includes(term);
+      const matchStatus = (status === 'all') || (el.dataset.status === status);
+      el.style.display = (matchText && matchStatus) ? '' : 'none';
+    });
+  }
+  search.addEventListener('input', apply);
+  filter.addEventListener('change', apply);
+})();
+</script>
+{% endblock %}

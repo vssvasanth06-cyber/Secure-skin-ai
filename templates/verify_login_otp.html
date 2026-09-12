@@ -1,0 +1,9 @@
+{% extends "_auth_base.html" %}
+{% block title %}Verify sign-in — Secure Skin AI{% endblock %}
+
+{% block card_body %}
+  {% url 'login' as otp_back_url %}
+  {% with otp_title="Verify sign-in" otp_subtitle="We emailed a 6-digit one-time code to your registered address. It's valid for 2 minutes." %}
+    {% include "_otp_verify_partial.html" %}
+  {% endwith %}
+{% endblock %}

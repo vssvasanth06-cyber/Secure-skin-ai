@@ -1,0 +1,183 @@
+{% extends "_base.html" %}
+{% block title %}Write Report · Case #{{ image.id }} — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-file-earmark-plus-fill"></i> Write Report · Case #{{ image.id }}</h1>
+    <div class="subtitle">Encrypted with the patient's public key. Only the patient can open it.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start;" class="rep-grid">
+
+  <!-- ══════ LEFT · CASE IMAGE — always visible while writing ══════ -->
+  <aside class="rep-side">
+    <section class="card-soft" style="padding:18px; position:sticky; top:82px;">
+      <header style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0; font-size:15px; font-weight:700;"><i class="bi bi-image text-muted-c"></i> Case #{{ image.id }} — Skin Image</h2>
+        <span class="chip chip-info"><i class="bi bi-unlock"></i> Decrypted</span>
+      </header>
+
+      <div class="img-frame" id="imgFrame" title="Click to enlarge">
+        <img id="caseImg"
+             src="{% url 'view_decrypted_image' image.id %}?token={{ view_token }}"
+             alt="Decrypted medical image for case #{{ image.id }}">
+        <div class="img-hint"><i class="bi bi-zoom-in"></i> Click to enlarge</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h3 style="margin:0 0 8px; font-size:14px; font-weight:700;"><i class="bi bi-person-vcard text-muted-c"></i> Patient</h3>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="stat-icon tone-info" style="width:36px;height:36px;font-size:14px;"><i class="bi bi-person"></i></div>
+        <div>
+          <div style="font-weight:600;">{{ image.user.get_full_name|default:image.user.username }}</div>
+          <div class="text-muted-c" style="font-size:12px;">@{{ image.user.username }} · Uploaded {{ image.uploaded_at|date:"d M Y, h:i A" }}</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div style="font-size:12px; color:var(--text-dim); display:flex; gap:8px; align-items:flex-start;">
+        <i class="bi bi-shield-lock" style="margin-top:2px;"></i>
+        <span>Image decrypted with a one-time token (5-min TTL). It stays visible here while you write — no need to re-open it.</span>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ══════ RIGHT · REPORT FORM ══════ -->
+  <section class="card-soft" style="padding:22px;">
+    {% if form_error %}
+      <div class="row-item" style="border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.06); color:#FCA5A5; margin-bottom:14px;">
+        <i class="bi bi-exclamation-octagon-fill"></i> {{ form_error }}
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="field">
+        <label for="diagnosis">Diagnosis / skin disease name *</label>
+        <input id="diagnosis" name="diagnosis" class="input" required placeholder="e.g. Atopic Dermatitis">
+      </div>
+
+      <div class="field">
+        <label for="severity">Severity</label>
+        <select id="severity" name="severity" class="input">
+          <option value="mild">Mild — patient pays ₹350, no appointment required</option>
+          <option value="severe">Severe — patient must book an appointment first</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="prescription">Prescription</label>
+        <textarea id="prescription" name="prescription" class="input" rows="6"
+                  placeholder="Medicine name, dosage, duration, follow-up notes…"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="remarks">Remarks (optional)</label>
+        <textarea id="remarks" name="remarks" class="input" rows="3"
+                  placeholder="Any additional advice or observations."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">
+        <i class="bi bi-shield-lock-fill"></i> Encrypt &amp; Send Report
+      </button>
+
+      <div style="font-size:12px; color:var(--text-dim); margin-top:12px; text-align:center;">
+        AES-256 encrypted → RSA-wrapped for the patient → signed with your key. Inputs are HTML-sanitised.
+      </div>
+    </form>
+  </section>
+
+</div>
+
+<!-- Lightbox: enlarges the ALREADY-LOADED image (no token re-use) -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Enlarged case image">
+  <img id="lightboxImg" src="" alt="Enlarged medical image">
+  <button class="lb-close" id="lbClose" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+</div>
+
+<style>
+.img-frame{
+  position:relative; cursor:zoom-in;
+  border-radius:14px; overflow:hidden;
+  border:1px solid var(--border-strong);
+  background:
+    conic-gradient(rgba(255,255,255,.05) 0 25%, transparent 0 50%, rgba(255,255,255,.05) 0 75%, transparent 0) 0 0/22px 22px,
+    rgba(2,8,23,.5);
+  box-shadow:inset 0 2px 8px rgba(2,8,23,.5);
+}
+.img-frame img{display:block; width:100%; max-height:420px; object-fit:contain}
+.img-frame .img-hint{
+  position:absolute; right:10px; bottom:10px;
+  padding:5px 10px; border-radius:999px; font-size:11.5px; font-weight:600;
+  background:rgba(2,8,23,.72); color:var(--text-muted); border:1px solid var(--border);
+  backdrop-filter:blur(6px);
+  opacity:0; transition:opacity var(--dur) var(--ease);
+}
+.img-frame:hover .img-hint{opacity:1}
+
+.lightbox{
+  position:fixed; inset:0; z-index:80; display:none;
+  align-items:center; justify-content:center; padding:32px;
+  background:rgba(2,8,23,.88); backdrop-filter:blur(8px);
+}
+.lightbox.open{display:flex; animation:lbIn .2s var(--ease)}
+.lightbox img{max-width:94vw; max-height:90vh; border-radius:12px; box-shadow:var(--elev-3)}
+.lb-close{
+  position:absolute; top:18px; right:18px;
+  width:44px; height:44px; border-radius:50%;
+  background:rgba(255,255,255,.08); border:1px solid var(--border-strong);
+  color:var(--text); font-size:18px; cursor:pointer;
+}
+@keyframes lbIn{from{opacity:0} to{opacity:1}}
+
+@media (max-width:1000px){
+  .rep-grid{grid-template-columns:1fr !important;}
+  .rep-side section{position:static !important;}
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const frame = document.getElementById('imgFrame');
+  const img   = document.getElementById('caseImg');
+  const lb    = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightboxImg');
+  const close = document.getElementById('lbClose');
+
+  // The decrypt token is single-use, so the lightbox re-displays the
+  // already-fetched image bytes instead of requesting the URL again.
+  frame.addEventListener('click', () => {
+    try{
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      lbImg.src = c.toDataURL();
+    }catch(e){ lbImg.src = img.src; }
+    lb.classList.add('open');
+  });
+  const hide = () => lb.classList.remove('open');
+  close.addEventListener('click', hide);
+  lb.addEventListener('click', e => { if(e.target === lb) hide(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') hide(); });
+
+  // If the one-time token was already consumed (e.g. hard refresh), tell the doctor.
+  img.addEventListener('error', () => {
+    frame.style.cursor = 'default';
+    frame.innerHTML = '<div style="padding:34px 18px; text-align:center; color:var(--text-muted);">' +
+      '<i class="bi bi-shield-exclamation" style="font-size:34px; color:#FCD34D;"></i>' +
+      '<p style="margin:12px 0 4px; font-weight:600; color:var(--text);">Secure view expired</p>' +
+      '<p style="margin:0; font-size:13px;">The one-time decrypt token was already used. Reload this page to issue a fresh token.</p>' +
+      '<a href="" class="btn btn-sm btn-outline" style="margin-top:14px;"><i class="bi bi-arrow-clockwise"></i> Reload</a></div>';
+  });
+})();
+</script>
+{% endblock %}

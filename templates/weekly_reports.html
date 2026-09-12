@@ -1,0 +1,40 @@
+{% extends "_base.html" %}
+{% block title %}Weekly Reports — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'admin_reports' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-file-earmark-text-fill"></i> Weekly Reports</h1>
+    <div class="subtitle">{{ data|length }} reports in the last 7 days.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if data %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px;">
+  {% for r in data %}
+  <article class="card-soft" style="padding:16px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <div style="font-weight:700;">RPT-{{ r.id|stringformat:"05d" }}</div>
+      {% if r.is_paid %}<span class="chip chip-success">Paid</span>{% else %}<span class="chip chip-warn">Pending</span>{% endif %}
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <i class="bi bi-person text-muted-c"></i>
+      <span>{{ r.image.user.get_full_name|default:r.image.user.username }}</span>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="chip {% if r.severity == 'severe' %}chip-danger{% else %}chip-info{% endif %}" style="text-transform:capitalize;">{{ r.severity }}</span>
+      <a href="{% url 'view_report' r.id %}" class="btn btn-sm btn-outline"><i class="bi bi-eye"></i> View</a>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-soft" style="text-align:center; padding:44px 20px; color:var(--text-muted);">
+  <i class="bi bi-file-earmark-x" style="font-size:44px; opacity:.5;"></i>
+  <p style="margin:12px 0 0;">No reports in the last 7 days.</p>
+</div>
+{% endif %}
+{% endblock %}

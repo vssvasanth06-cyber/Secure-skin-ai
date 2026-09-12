@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attack Simulation Lab — Secure Skin AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── Header ─────────────────────────────── */
+        .lab-header {
+            background: linear-gradient(135deg, #1a0000, #2d0a0a, #1a0000);
+            border-bottom: 2px solid #ff3333;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .lab-header h1 { font-size: 1.5rem; font-weight: 700; color: #ff4444; margin: 0; }
+        .lab-header p  { margin: 0; font-size: 0.85rem; color: #aaa; }
+        .warning-badge {
+            background: rgba(255,50,50,0.15);
+            border: 1px solid #ff3333;
+            color: #ff6666;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-left: auto;
+        }
+
+        /* ── Layout ─────────────────────────────── */
+        .main-content { padding: 28px 32px; }
+        .attack-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 900px) { .attack-grid { grid-template-columns: 1fr; } }
+
+        /* ── Attack Cards ───────────────────────── */
+        .attack-card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .attack-card:hover { transform: translateY(-2px); }
+
+        .card-header-bar {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-header-bar .icon {
+            width: 44px; height: 44px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+        }
+        .card-header-bar h4 { margin: 0; font-size: 1rem; font-weight: 700; }
+        .card-header-bar p  { margin: 0; font-size: 0.78rem; opacity: 0.65; }
+
+        /* Attack colour themes */
+        .ransomware .card-header-bar { background: linear-gradient(135deg, rgba(220,38,38,0.25), rgba(153,27,27,0.15)); border-bottom: 1px solid rgba(220,38,38,0.3); }
+        .ransomware .icon            { background: rgba(220,38,38,0.2); color: #f87171; }
+        .trojan     .card-header-bar { background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(91,33,182,0.15)); border-bottom: 1px solid rgba(124,58,237,0.3); }
+        .trojan     .icon            { background: rgba(124,58,237,0.2); color: #c084fc; }
+        .spyware    .card-header-bar { background: linear-gradient(135deg, rgba(234,179,8,0.25), rgba(161,98,7,0.15)); border-bottom: 1px solid rgba(234,179,8,0.3); }
+        .spyware    .icon            { background: rgba(234,179,8,0.2); color: #fbbf24; }
+        .keylogger  .card-header-bar { background: linear-gradient(135deg, rgba(20,184,166,0.25), rgba(15,118,110,0.15)); border-bottom: 1px solid rgba(20,184,166,0.3); }
+        .keylogger  .icon            { background: rgba(20,184,166,0.2); color: #2dd4bf; }
+
+        .card-body-inner { padding: 20px; }
+
+        /* ── Status Bar ─────────────────────────── */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .status-danger  { background: rgba(220,38,38,0.15);  border: 1px solid rgba(220,38,38,0.4);  color: #f87171; }
+        .status-safe    { background: rgba(34,197,94,0.12);  border: 1px solid rgba(34,197,94,0.35); color: #4ade80; }
+        .status-warning { background: rgba(234,179,8,0.12);  border: 1px solid rgba(234,179,8,0.35); color: #fbbf24; }
+        .status-info    { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.35);color: #60a5fa; }
+
+        /* ── Stats Row ──────────────────────────── */
+        .stats-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .stat-box {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .stat-box .num  { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+        .stat-box .lbl  { font-size: 0.7rem; color: #888; margin-top: 3px; }
+        .num-red    { color: #f87171; }
+        .num-green  { color: #4ade80; }
+        .num-yellow { color: #fbbf24; }
+        .num-teal   { color: #2dd4bf; }
+
+        /* ── Log Preview ────────────────────────── */
+        .log-preview {
+            background: #0d0d0d;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.72rem;
+            color: #a0a0a0;
+            max-height: 140px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+        .log-preview .log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .log-line.danger  { color: #f87171; }
+        .log-line.warning { color: #fbbf24; }
+        .log-line.success { color: #4ade80; }
+        .log-line.info    { color: #60a5fa; }
+
+        /* ── Buttons ────────────────────────────── */
+        .btn-attack  { background: linear-gradient(135deg,#dc2626,#991b1b); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-attack:hover { opacity: 0.85; }
+        .btn-restore { background: linear-gradient(135deg,#16a34a,#15803d); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-restore:hover { opacity: 0.85; }
+        .btn-clear   { background: rgba(255,255,255,0.08); color: #ccc; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 9px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-clear:hover { opacity: 0.75; }
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* ── Step Guide ─────────────────────────── */
+        .step-guide {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+        .step-guide h6 { font-size: 0.78rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; font-size: 0.8rem; }
+        .step-num { background: rgba(255,255,255,0.1); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+        .step-text { color: #bbb; }
+        .step-text b { color: #e0e0e0; }
+
+        /* ── File Upload Area ───────────────────── */
+        .upload-zone {
+            border: 2px dashed rgba(124,58,237,0.4);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 14px;
+            background: rgba(124,58,237,0.05);
+        }
+        .upload-zone input[type=file] { display: none; }
+        .upload-zone label { cursor: pointer; color: #c084fc; font-size: 0.82rem; }
+
+        /* ── Messages ───────────────────────────── */
+        .msg-bar { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 0.82rem; font-weight: 500; }
+        .msg-error   { background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.4); color: #f87171; }
+        .msg-success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.35); color: #4ade80; }
+        .msg-warning { background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.35); color: #fbbf24; }
+        .msg-info    { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.35); color: #60a5fa; }
+
+        /* ── Nav ─────────────────────────────────── */
+        .top-nav { display: flex; align-items: center; gap: 16px; padding: 12px 32px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .top-nav a { color: #888; font-size: 0.82rem; text-decoration: none; }
+        .top-nav a:hover { color: #fff; }
+
+        /* ── Screenshot tip ─────────────────────── */
+        .screenshot-tip {
+            background: rgba(59,130,246,0.08);
+            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            color: #93c5fd;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ── Section title ──────────────────────── */
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #555;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.07);
+        }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- ── Top Nav ──────────────────────────────────────────────── -->
+<div class="top-nav">
+    <a href="{% url 'dashboard' %}"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+    <span style="color:#555">|</span>
+    <span style="color:#ff4444; font-size:0.82rem; font-weight:600;"><i class="bi bi-shield-exclamation"></i> Attack Simulation Lab</span>
+</div>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<div class="lab-header">
+    <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,50,50,0.15);border:1px solid rgba(255,50,50,0.3);display:flex;align-items:center;justify-content:center;font-size:1.5rem;">⚠️</div>
+    <div>
+        <h1>Attack Simulation Lab</h1>
+        <p>Test Ransomware · Trojan · Spyware · Keylogger — before &amp; after comparison</p>
+    </div>
+    <span class="warning-badge">ISOLATED TEST ENVIRONMENT</span>
+</div>
+
+<div class="main-content">
+
+    <!-- Django messages -->
+    {% for msg in messages %}
+    <div class="msg-bar {% if msg.tags == 'error' %}msg-error{% elif msg.tags == 'success' %}msg-success{% elif msg.tags == 'warning' %}msg-warning{% else %}msg-info{% endif %}">
+        <i class="bi {% if msg.tags == 'error' %}bi-exclamation-triangle-fill{% elif msg.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %}"></i>
+        {{ msg }}
+    </div>
+    {% endfor %}
+
+    <!-- ── BEFORE screenshot instruction ──────────────────────── -->
+    <div class="screenshot-tip">
+        <i class="bi bi-camera"></i>
+        <strong>BEFORE Screenshot:</strong>&nbsp; Take a screenshot of this page NOW (all counts showing normal state) — then trigger each attack and compare.
+    </div>
+
+    <div class="section-title">4 Attack Simulations</div>
+
+    <div class="attack-grid">
+
+        <!-- ══════════════════════════════════════════════════════
+             ATTACK 1 — RANSOMWARE
+        ══════════════════════════════════════════════════════ -->
+        <div class="attack-card ransomware">
+            <div class="card-header-bar">
+                <div class="icon"><i class="bi bi-lock-fill"></i></div>
+                <div>
+                    <h4>Attack 1 — Ransomware</h4>
+                    <p>Encrypts all uploaded medical images on the server</p>
+                </div>
+            </div>
+            <div class="card-body-inner">
+
+                <!-- Status -->
+                {% if locked_files_count > 0 %}
+                <div class="status-bar status-danger">
+                    <i class="bi bi-lock-fill"></i> ATTACK ACTIVE — {{ locked_files_count }} files are LOCKED
+                </div>
+                {% else %}
+                <div class="status-bar status-safe">
+                    <i class="bi bi-unlock-fill"></i> SYSTEM NORMAL — All files accessible
+                </div>
+                {% endif %}
+
+                <!-- Stats -->
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="num num-green">{{ normal_images_count }}</div>
+                        <div class="lbl">Normal Images</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="num num-red">{{ locked_files_count }}</div>
+                        <div class="lbl">Locked (.locked)</div>
+                    </div>
+                </div>
+
+                <!-- Locked file list -->
+                {% if locked_files %}
+                <div class="log-preview">
+                    {% for f in locked_files %}
+                    <div class="log-line danger">🔒 {{ f }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Step Guide -->
+                <div class="step-guide">
+                    <h6>Test Steps</h6>
+                    <div class="step"><div class="step-num">1</div><div class="step-text"><b>BEFORE:</b> Screenshot this page — note normal image count</div></div>
+                    <div class="step"><div class="step-num">2</div><div class="step-text">Go to <b>Patient Dashboard → upload page</b> → screenshot showing images load normally</div></div>
+                    <div class="step"><div class="step-num">3</div><div class="step-text">Click <b>Trigger Ransomware</b> below</div></div>
+                    <div class="step"><div class="step-num">4</div><div class="step-text"><b>AFTER:</b> Screenshot this page — locked count increased, normal count = 0</div></div>
+                    <div class="step"><div class="step-num">5</div><div class="step-text">Go back to patient dashboard — screenshot showing broken/missing images</div></div>
+                    <div class="step"><div class="step-num">6</div><div class="step-text">Also screenshot <b>attack_logs/ransomware_victims.txt</b> in File Explorer</div></div>
+                    <div class="step"><div class="step-num">7</div><div class="step-text">Click <b>Restore Files</b> to recover — screenshot recovery message</div></div>
+                </div>
+
+                <div class="btn-row">
+                    <form method="POST" action="{% url 'ransomware_trigger' %}">
+                        {% csrf_token %}
+                        <button class="btn-attack" type="submit" onclick="return confirm('Simulate ransomware encrypting ALL media files?')">
+                            <i class="bi bi-lock-fill"></i> Trigger Ransomware
+                        </button>
+                    </form>
+                    <form method="POST" action="{% url 'ransomware_restore' %}">
+                        {% csrf_token %}
+                        <button class="btn-restore" type="submit">
+                            <i class="bi bi-unlock-fill"></i> Restore Files
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             ATTACK 2 — TROJAN
+        ══════════════════════════════════════════════════════ -->
+        <div class="attack-card trojan">
+            <div class="card-header-bar">
+                <div class="icon"><i class="bi bi-bug-fill"></i></div>
+                <div>
+                    <h4>Attack 2 — Trojan Horse</h4>
+                    <p>Upload a fake "image" file that is actually a script</p>
+                </div>
+            </div>
+            <div class="card-body-inner">
+
+                <!-- Status -->
+                {% if trojan_total > 0 %}
+                <div class="status-bar status-danger">
+                    <i class="bi bi-bug-fill"></i> {{ trojan_total }} upload attempts logged
+                </div>
+                {% else %}
+                <div class="status-bar status-safe">
+                    <i class="bi bi-shield-check"></i> No trojan upload attempts yet
+                </div>
+                {% endif %}
+
+                <!-- Stats -->
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="num num-yellow">{{ trojan_total }}</div>
+                        <div class="lbl">Upload Attempts</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="num num-red">
+                            {% with blocked=0 %}{{ trojan_total }}{% endwith %}
+                        </div>
+                        <div class="lbl">Logged Events</div>
+                    </div>
+                </div>
+
+                <!-- Log -->
+                {% if trojan_records %}
+                <div class="log-preview">
+                    {% for r in trojan_records %}
+                    <div class="log-line {% if r.verdict == 'TROJAN DETECTED' %}danger{% else %}success{% endif %}">
+                        [{{ r.timestamp|slice:":19" }}] {{ r.verdict }} — {{ r.filename }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Step Guide -->
+                <div class="step-guide">
+                    <h6>Test Steps</h6>
+                    <div class="step"><div class="step-num">1</div><div class="step-text"><b>Create a fake image file:</b> Open Notepad → type any text → Save as <code>trojan_test.jpg</code> (it is actually a .txt file renamed)</div></div>
+                    <div class="step"><div class="step-num">2</div><div class="step-text"><b>BEFORE:</b> Screenshot this page showing 0 attempts</div></div>
+                    <div class="step"><div class="step-num">3</div><div class="step-text">Select <b>Vulnerable mode</b> → upload your fake .jpg → screenshot the ACCEPTED result</div></div>
+                    <div class="step"><div class="step-num">4</div><div class="step-text"><b>AFTER:</b> Screenshot this page — "TROJAN ACCEPTED" message, count increased</div></div>
+                    <div class="step"><div class="step-num">5</div><div class="step-text">Now select <b>Protected mode</b> → upload same fake .jpg → screenshot the BLOCKED result</div></div>
+                    <div class="step"><div class="step-num">6</div><div class="step-text">Screenshot <b>attack_logs/trojan_backdoor.txt</b> in File Explorer</div></div>
+                </div>
+
+                <form method="POST" action="{% url 'trojan_upload_test' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="upload-zone">
+                        <input type="file" id="trojanFile" name="test_file" accept="*/*">
+                        <label for="trojanFile"><i class="bi bi-cloud-upload"></i> Click to select file (any file renamed to .jpg)</label>
+                        <div id="fileChosen" style="color:#888;font-size:0.75rem;margin-top:6px;">No file chosen</div>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+                        <label style="font-size:0.8rem;color:#bbb;">Mode:</label>
+                        <label style="font-size:0.8rem;color:#c084fc;cursor:pointer;">
+                            <input type="radio" name="mode" value="vulnerable" checked> Vulnerable (extension only)
+                        </label>
+                        <label style="font-size:0.8rem;color:#4ade80;cursor:pointer;">
+                            <input type="radio" name="mode" value="protected"> Protected (magic bytes check)
+                        </label>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn-attack" type="submit"><i class="bi bi-upload"></i> Test Upload</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             ATTACK 3 — SPYWARE
+        ══════════════════════════════════════════════════════ -->
+        <div class="attack-card spyware">
+            <div class="card-header-bar">
+                <div class="icon"><i class="bi bi-eye-fill"></i></div>
+                <div>
+                    <h4>Attack 3 — Spyware</h4>
+                    <p>Silently copies all patient records to attacker log</p>
+                </div>
+            </div>
+            <div class="card-body-inner">
+
+                <!-- Status -->
+                {% if spyware_total > 0 %}
+                <div class="status-bar status-danger">
+                    <i class="bi bi-eye-fill"></i> ACTIVE — {{ spyware_total }} patient records STOLEN
+                </div>
+                {% else %}
+                <div class="status-bar status-safe">
+                    <i class="bi bi-eye-slash"></i> No data exfiltrated yet
+                </div>
+                {% endif %}
+
+                <!-- Stats -->
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="num num-yellow">{{ spyware_total }}</div>
+                        <div class="lbl">Records Stolen</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="num num-red">
+                            {% if spyware_total > 0 %}LIVE{% else %}OFF{% endif %}
+                        </div>
+                        <div class="lbl">Exfil Status</div>
+                    </div>
+                </div>
+
+                <!-- Stolen records preview -->
+                {% if spyware_records %}
+                <div class="log-preview">
+                    {% for r in spyware_records %}
+                    <div class="log-line warning">
+                        [{{ r.timestamp|slice:":19" }}] STOLEN: {{ r.patient_name }} | {{ r.diagnosis }} | Sev: {{ r.severity }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Step Guide -->
+                <div class="step-guide">
+                    <h6>Test Steps</h6>
+                    <div class="step"><div class="step-num">1</div><div class="step-text"><b>BEFORE:</b> Screenshot this page — 0 records stolen</div></div>
+                    <div class="step"><div class="step-num">2</div><div class="step-text">Open <b>File Explorer → attack_logs/</b> — screenshot showing NO spyware file</div></div>
+                    <div class="step"><div class="step-num">3</div><div class="step-text">Click <b>Trigger Spyware</b> below</div></div>
+                    <div class="step"><div class="step-num">4</div><div class="step-text"><b>AFTER:</b> Screenshot this page — count shows all patient records stolen</div></div>
+                    <div class="step"><div class="step-num">5</div><div class="step-text">Open <b>attack_logs/spyware_stolen_data.json</b> — screenshot showing patient names, diagnosis, severity all exposed</div></div>
+                    <div class="step"><div class="step-num">6</div><div class="step-text">Click <b>Clear Log</b> to reset — screenshot confirmation</div></div>
+                </div>
+
+                <div class="btn-row">
+                    <form method="POST" action="{% url 'spyware_trigger' %}">
+                        {% csrf_token %}
+                        <button class="btn-attack" type="submit" onclick="return confirm('Simulate spyware copying all patient records?')">
+                            <i class="bi bi-eye-fill"></i> Trigger Spyware
+                        </button>
+                    </form>
+                    <form method="POST" action="{% url 'spyware_clear' %}">
+                        {% csrf_token %}
+                        <button class="btn-clear" type="submit"><i class="bi bi-trash"></i> Clear Log</button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             ATTACK 4 — KEYLOGGER
+        ══════════════════════════════════════════════════════ -->
+        <div class="attack-card keylogger">
+            <div class="card-header-bar">
+                <div class="icon"><i class="bi bi-keyboard-fill"></i></div>
+                <div>
+                    <h4>Attack 4 — Keylogger</h4>
+                    <p>JS on login page captures every keystroke silently</p>
+                </div>
+            </div>
+            <div class="card-body-inner">
+
+                <!-- Status -->
+                {% if keylogger_total > 0 %}
+                <div class="status-bar status-danger">
+                    <i class="bi bi-keyboard-fill"></i> ACTIVE — {{ keylogger_total }} keylog entries captured
+                </div>
+                {% else %}
+                <div class="status-bar status-info">
+                    <i class="bi bi-info-circle"></i> Enable keylogger JS on login page to start capture
+                </div>
+                {% endif %}
+
+                <!-- Stats -->
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="num num-teal">{{ keylogger_total }}</div>
+                        <div class="lbl">Keylog Entries</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="num {% if keylogger_total > 0 %}num-red{% else %}num-green{% endif %}">
+                            {% if keylogger_total > 0 %}ON{% else %}OFF{% endif %}
+                        </div>
+                        <div class="lbl">Logger Status</div>
+                    </div>
+                </div>
+
+                <!-- Captured keystrokes -->
+                {% if keylogger_records %}
+                <div class="log-preview">
+                    {% for r in keylogger_records %}
+                    <div class="log-line info">
+                        [{{ r.timestamp|slice:":19" }}] Field: {{ r.field }} | Captured: "{{ r.full_input }}"
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Step Guide -->
+                <div class="step-guide">
+                    <h6>Test Steps</h6>
+                    <div class="step"><div class="step-num">1</div><div class="step-text"><b>BEFORE:</b> Screenshot this page — 0 keylog entries</div></div>
+                    <div class="step"><div class="step-num">2</div><div class="step-text">Open <b>templates/login.html</b> — uncomment the KEYLOGGER SCRIPT block (find the comment in the file)</div></div>
+                    <div class="step"><div class="step-num">3</div><div class="step-text">Restart the server — open the login page in a <b>new private/incognito window</b></div></div>
+                    <div class="step"><div class="step-num">4</div><div class="step-text">Type any username and password on the login form (use test credentials)</div></div>
+                    <div class="step"><div class="step-num">5</div><div class="step-text"><b>AFTER:</b> Come back here — screenshot showing captured keystrokes in the log</div></div>
+                    <div class="step"><div class="step-num">6</div><div class="step-text">Open <b>attack_logs/keylogger_captured.txt</b> — screenshot showing exact credentials typed</div></div>
+                    <div class="step"><div class="step-num">7</div><div class="step-text">Comment out the keylogger script in login.html to disable it — screenshot clean login page</div></div>
+                </div>
+
+                <div class="btn-row">
+                    <form method="POST" action="{% url 'keylogger_clear' %}">
+                        {% csrf_token %}
+                        <button class="btn-clear" type="submit"><i class="bi bi-trash"></i> Clear Captured Log</button>
+                    </form>
+                </div>
+
+                <div style="margin-top:12px; padding:10px; background:rgba(45,212,191,0.08); border:1px solid rgba(45,212,191,0.2); border-radius:8px; font-size:0.76rem; color:#5eead4;">
+                    <i class="bi bi-code-slash"></i>
+                    <strong>To enable:</strong> Open <code>templates/login.html</code> and uncomment the block marked
+                    <code>&lt;!-- KEYLOGGER ATTACK SCRIPT --&gt;</code>
+                </div>
+
+            </div>
+        </div>
+
+    </div><!-- /attack-grid -->
+
+    <!-- ── Summary Table ──────────────────────────────────────── -->
+    <div style="margin-top:28px;">
+        <div class="section-title">Current Attack Status Summary</div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                <thead>
+                    <tr style="background:rgba(255,255,255,0.05);">
+                        <th style="padding:12px 16px;text-align:left;color:#888;font-weight:600;">Attack</th>
+                        <th style="padding:12px 16px;text-align:center;color:#888;font-weight:600;">Status</th>
+                        <th style="padding:12px 16px;text-align:center;color:#888;font-weight:600;">Impact Count</th>
+                        <th style="padding:12px 16px;text-align:left;color:#888;font-weight:600;">Log File</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-top:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:12px 16px;"><i class="bi bi-lock-fill" style="color:#f87171;"></i> Ransomware</td>
+                        <td style="padding:12px 16px;text-align:center;">
+                            {% if locked_files_count > 0 %}
+                            <span style="background:rgba(220,38,38,0.2);color:#f87171;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">ACTIVE</span>
+                            {% else %}
+                            <span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">CLEAN</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;color:#f87171;font-weight:700;">{{ locked_files_count }} files locked</td>
+                        <td style="padding:12px 16px;color:#666;font-size:0.75rem;">attack_logs/ransomware_victims.txt</td>
+                    </tr>
+                    <tr style="border-top:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:12px 16px;"><i class="bi bi-bug-fill" style="color:#c084fc;"></i> Trojan</td>
+                        <td style="padding:12px 16px;text-align:center;">
+                            {% if trojan_total > 0 %}
+                            <span style="background:rgba(124,58,237,0.2);color:#c084fc;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">LOGGED</span>
+                            {% else %}
+                            <span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">CLEAN</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;color:#c084fc;font-weight:700;">{{ trojan_total }} attempts</td>
+                        <td style="padding:12px 16px;color:#666;font-size:0.75rem;">attack_logs/trojan_backdoor.txt</td>
+                    </tr>
+                    <tr style="border-top:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:12px 16px;"><i class="bi bi-eye-fill" style="color:#fbbf24;"></i> Spyware</td>
+                        <td style="padding:12px 16px;text-align:center;">
+                            {% if spyware_total > 0 %}
+                            <span style="background:rgba(234,179,8,0.2);color:#fbbf24;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">EXFILTRATING</span>
+                            {% else %}
+                            <span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">CLEAN</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;color:#fbbf24;font-weight:700;">{{ spyware_total }} records stolen</td>
+                        <td style="padding:12px 16px;color:#666;font-size:0.75rem;">attack_logs/spyware_stolen_data.json</td>
+                    </tr>
+                    <tr style="border-top:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:12px 16px;"><i class="bi bi-keyboard-fill" style="color:#2dd4bf;"></i> Keylogger</td>
+                        <td style="padding:12px 16px;text-align:center;">
+                            {% if keylogger_total > 0 %}
+                            <span style="background:rgba(20,184,166,0.2);color:#2dd4bf;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">CAPTURING</span>
+                            {% else %}
+                            <span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">INACTIVE</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;color:#2dd4bf;font-weight:700;">{{ keylogger_total }} entries</td>
+                        <td style="padding:12px 16px;color:#666;font-size:0.75rem;">attack_logs/keylogger_captured.txt</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div><!-- /main-content -->
+
+<script>
+// Show chosen filename in trojan upload zone
+document.getElementById('trojanFile').addEventListener('change', function() {
+    var name = this.files[0] ? this.files[0].name : 'No file chosen';
+    document.getElementById('fileChosen').textContent = name;
+});
+</script>
+
+</body>
+</html>

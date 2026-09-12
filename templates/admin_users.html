@@ -1,0 +1,101 @@
+{% extends "_base.html" %}
+{% block title %}All Users — Secure Skin AI{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+  <a href="{% url 'dashboard' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+  <div>
+    <h1><i class="bi bi-people-fill"></i> All Users</h1>
+    <div class="subtitle">{{ users|length }} registered accounts.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<section class="card-soft" style="margin-bottom:16px;">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <i class="bi bi-search text-muted-c"></i>
+    <input id="searchInput" class="input" placeholder="Search username, email or role…"
+           style="background:transparent; border:none; padding:10px 4px;">
+  </div>
+</section>
+
+<section class="card-soft" style="margin-bottom:18px; padding:0; overflow:hidden;">
+  <div style="padding:18px 18px 0;">
+    <h2 style="margin:0 0 12px; font-size:15px; font-weight:700;"><i class="bi bi-people text-muted-c"></i> Registered Users</h2>
+  </div>
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:14px;" id="userTable">
+      <thead>
+        <tr style="text-align:left; color:var(--text-muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;">
+          <th style="padding:10px 18px;">Username</th>
+          <th style="padding:10px 18px;">Email</th>
+          <th style="padding:10px 18px;">Role</th>
+          <th style="padding:10px 18px;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr style="border-top:1px solid var(--border);">
+          <td style="padding:12px 18px; font-weight:600;">{{ u.username }}</td>
+          <td style="padding:12px 18px; color:var(--text-muted);">{{ u.email }}</td>
+          <td style="padding:12px 18px;">
+            <span class="chip {% if u.userprofile.role == 'doctor' %}chip-success{% elif u.userprofile.role == 'admin' %}chip-info{% else %}chip-warn{% endif %}">
+              {{ u.userprofile.role|title }}
+            </span>
+          </td>
+          <td style="padding:12px 18px;">
+            <a href="{% url 'delete_user' u.id %}" class="btn btn-sm btn-danger"
+               onclick="return confirm('Delete this user? This cannot be undone.')">
+              <i class="bi bi-trash"></i> Delete
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="padding:24px; text-align:center; color:var(--text-muted);">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card-soft" style="padding:0; overflow:hidden;">
+  <div style="padding:18px 18px 0;">
+    <h2 style="margin:0 0 12px; font-size:15px; font-weight:700;"><i class="bi bi-clock-history text-muted-c"></i> Login History</h2>
+  </div>
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <thead>
+        <tr style="text-align:left; color:var(--text-muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;">
+          <th style="padding:10px 18px;">User</th>
+          <th style="padding:10px 18px;">Role / Event</th>
+          <th style="padding:10px 18px;">Login Time</th>
+          <th style="padding:10px 18px;">IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr style="border-top:1px solid var(--border);">
+          <td style="padding:12px 18px;">{{ log.user.username|default:"—" }}</td>
+          <td style="padding:12px 18px;"><span class="chip chip-muted mono" style="text-transform:none;">{{ log.role }}</span></td>
+          <td style="padding:12px 18px; color:var(--text-muted);">{{ log.login_time|date:"d M Y, h:i:s A" }}</td>
+          <td style="padding:12px 18px;"><span class="mono">{{ log.ip_address|default:"—" }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="padding:24px; text-align:center; color:var(--text-muted);">No login history yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+const input = document.getElementById("searchInput");
+const rows = document.querySelectorAll("#userTable tbody tr");
+input.addEventListener("input", function(){
+  const v = this.value.toLowerCase();
+  rows.forEach(r => r.style.display = r.innerText.toLowerCase().includes(v) ? "" : "none");
+});
+</script>
+{% endblock %}
